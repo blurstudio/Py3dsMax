@@ -152,7 +152,7 @@
 				ShowProgress="2"
 				OutputFile="$(OutDir)\$(ProjectName).dlx"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="$(PYTHON_PATH)\libs"
+				AdditionalLibraryDirectories="c:\python25_x64\libs"
 				IgnoreDefaultLibraryNames="python25_d.lib"
 				ModuleDefinitionFile="blurPython.def"
 				GenerateDebugInformation="true"
@@ -182,7 +182,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy $(OutDir)\$(ProjectName).dlx $(MAX9PATH)\plugins\blur\&#x0D;&#x0A;copy $(OutDir)\$(ProjectName).dlx $(DEV_CODE)\bin\max\max9\&#x0D;&#x0A;"
+				CommandLine="copy $(OutDir)\$(ProjectName).dlx $(MAX9PATH64)\plugins\blur\&#x0D;&#x0A;copy $(OutDir)\$(ProjectName).dlx $(DEV_CODE)\bin\max\max9\&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration
@@ -298,7 +298,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;c:\python25\include&quot;"
+				AdditionalIncludeDirectories="c:\python25\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_CRD_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -353,7 +353,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy $(OutDir)\$(ProjectName).dlx $(MAX9PATH)\plugins\blur\&#x0D;&#x0A;copy $(OutDir)\$(ProjectName).dlx $(DEV_CODE)\bin\max\max9\&#x0D;&#x0A;"
+				CommandLine="copy $(OutDir)\$(ProjectName).dlx $(MAX9PATH)\plugins\blur\&#x0D;&#x0A;"
 			/>
 		</Configuration>
 	</Configurations>

@@ -49,7 +49,7 @@ MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 		// Build Keywords
 		if ( keyword_count != -1 ) {
 			PyObject *key, *value;
-			int pos		= 0;
+			int* pos		= 0;
 			int key_pos = 0;
 			arg_list[ count ] = &keyarg_marker;
 			while ( PyDict_Next( kwds, &pos, &key, &value ) ) {
