@@ -1,5 +1,7 @@
-#ifndef		__XCORE_H__
-#define		__XCORE_H__
+#ifndef		__BLURPYTHON_H__
+#define		__BLURPYTHON_H__
+
+#include "IPathConfigMgr.h"
 
 PyMODINIT_FUNC init_max();
 
@@ -15,4 +17,4 @@ void BlurPythonInit() {
 	PyRun_SimpleString( "sys.stderr = Py3dsMax.StdLog()" );
 }
 
-#endif		__XCORE_H__
+#endif		__BLURPYTHON_H__

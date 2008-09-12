@@ -49,7 +49,7 @@ MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 		// Build Keywords
 		if ( keyword_count != -1 ) {
 			PyObject *key, *value;
-			int* pos		= 0;
+			int pos		= 0;
 			int key_pos = 0;
 			arg_list[ count ] = &keyarg_marker;
 			while ( PyDict_Next( kwds, &pos, &key, &value ) ) {
@@ -204,7 +204,7 @@ MXSValueWrapper_getattr( MXSValueWrapper* self, char* key ) {
 		return NULL;
 	}
 	if ( !result ) {
-		PyErr_SetString( PyExc_AttributeError, TSTR( "Cannot get property: " ) + key );
+		PyErr_SetString( PyExc_AttributeError, key );
 		return NULL;
 	}
 	return ObjectValueWrapper::pyintern( result );
@@ -233,7 +233,7 @@ MXSValueWrapper_setattr( MXSValueWrapper* self, char* key, PyObject* value ) {
 		return -1;
 	}
 	if ( !result ) {
-		PyErr_SetString( PyExc_AttributeError, TSTR( "Cannot get property: " ) + key );
+		PyErr_SetString( PyExc_AttributeError, key );
 		return NULL;
 	}
 	return 0;
@@ -241,53 +241,58 @@ MXSValueWrapper_setattr( MXSValueWrapper* self, char* key, PyObject* value ) {
 
 static PyObject*
 MXSValueWrapper_str( MXSValueWrapper* self ) {
-	StringStream* s = new StringStream(0);
-	s->puts( "<mxs (" );
-	self->value->eval()->sprin1(s);
-	s->puts( ")>" );
-	return PyString_FromString( s->to_string() );
+	try {
+		StringStream* s = new StringStream(0);
+		s->puts( "<mxs." );
+		self->value->eval()->tag->sprin1(s);
+		s->puts( " " );
+		self->value->eval()->sprin1(s);
+		s->puts( ">" );
+		return PyString_FromString( s->to_string() );
+	}
+	catch ( ... ) { return PyString_FromString( "<mxs.ERROR_INVALID_VALUE>" ); }
 }
 
 static PyTypeObject MXSValueWrapperType = {
     PyObject_HEAD_INIT(NULL)
-    0,											/*ob_size*/
-    "mxs",										/*tp_name*/
-    sizeof(MXSValueWrapper),					/*tp_basicsize*/
-    0,											/*tp_itemsize*/
-    (destructor)MXSValueWrapper_dealloc,		/*tp_dealloc*/
-    0,											/*tp_print*/
-    (getattrfunc)MXSValueWrapper_getattr,		/*tp_getattr*/
-    (setattrfunc)MXSValueWrapper_setattr,		/*tp_setattr*/
-    (cmpfunc)MXSValueWrapper_compare,			/*tp_compare*/
-    0,											/*tp_repr*/
-    0,											/*tp_as_number*/
-    0,											/*tp_as_sequence*/
-    0,											/*tp_as_mapping*/
-    0,											/*tp_hash */
-    (ternaryfunc)MXSValueWrapper_call,			/*tp_call*/
-    (reprfunc)MXSValueWrapper_str,				/*tp_str*/
-    0,											/*tp_getattro*/
-    0,											/*tp_setattro*/
-    0,											/*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,	/*tp_flags*/
-    "Maxscript Value Wrapper",					/* tp_doc */
-    0,											/* tp_traverse */
-    0,											/* tp_clear */
-    0,											/* tp_richcompare */
-    0,											/* tp_weaklistoffset */
-    0,											/* tp_iter */
-    0,											/* tp_iternext */
-    0,											/* tp_methods */
-    0,											/* tp_members */
-    0,											/* tp_getset */
-    0,											/* tp_base */
-    0,											/* tp_dict */
-    0,											/* tp_descr_get */
-    0,											/* tp_descr_set */
-    0,											/* tp_dictoffset */
-    0,											/* tp_init */
-    0,											/* tp_alloc */
-    MXSValueWrapper_new,						/* tp_new */
+    0,											// ob_size
+    "mxs",										// tp_name
+    sizeof(MXSValueWrapper),					// tp_basicsize
+    0,											// tp_itemsize
+    (destructor)MXSValueWrapper_dealloc,		// tp_dealloc
+    0,											// tp_print
+    (getattrfunc)MXSValueWrapper_getattr,		// tp_getattr
+    (setattrfunc)MXSValueWrapper_setattr,		// tp_setattr
+    (cmpfunc)MXSValueWrapper_compare,			// tp_compare
+    0,											// tp_repr
+    0,											// tp_as_number
+    0,											// tp_as_sequence
+    0,											// tp_as_mapping
+    0,											// tp_hash 
+    (ternaryfunc)MXSValueWrapper_call,			// tp_call
+    (reprfunc)MXSValueWrapper_str,				// tp_str
+    0,											// tp_getattro
+    0,											// tp_setattro
+    0,											// tp_as_buffer
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,	// tp_flags
+    "Maxscript Value Wrapper",					// tp_doc 
+    0,											// tp_traverse 
+    0,											// tp_clear 
+    0,											// tp_richcompare 
+    0,											// tp_weaklistoffset 
+    0,											// tp_iter 
+    0,											// tp_iternext 
+    0,											// tp_methods 
+    0,											// tp_members 
+    0,											// tp_getset 
+    0,											// tp_base 
+    0,											// tp_dict 
+    0,											// tp_descr_get 
+    0,											// tp_descr_set 
+    0,											// tp_dictoffset 
+    0,											// tp_init 
+    0,											// tp_alloc 
+    MXSValueWrapper_new,						// tp_new 
 };
 
 //------------------------------------------------------------------------------------------------------------------

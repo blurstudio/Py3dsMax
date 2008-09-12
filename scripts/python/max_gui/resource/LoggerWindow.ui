@@ -1,0 +1,161 @@
+<ui version="4.0" >
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow" >
+  <property name="geometry" >
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>578</width>
+    <height>310</height>
+   </rect>
+  </property>
+  <property name="windowTitle" >
+   <string>Python Listener</string>
+  </property>
+  <widget class="QWidget" name="centralwidget" />
+  <widget class="QMenuBar" name="uiMenuBar" >
+   <property name="geometry" >
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>578</width>
+     <height>19</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_Help" >
+    <property name="title" >
+     <string>&amp;Help</string>
+    </property>
+    <addaction name="uiAboutACT" />
+   </widget>
+   <widget class="QMenu" name="uiFileMENU" >
+    <property name="title" >
+     <string>&amp;File</string>
+    </property>
+    <addaction name="uiCloseACT" />
+    <addaction name="uiSaveAsACT" />
+    <addaction name="separator" />
+    <addaction name="uiNewScripACT" />
+    <addaction name="uiOpenScriptACT" />
+    <addaction name="uiRunScriptACT" />
+   </widget>
+   <addaction name="uiFileMENU" />
+   <addaction name="menu_Help" />
+  </widget>
+  <widget class="QStatusBar" name="statusbar" />
+  <action name="uiSaveLogACT" >
+   <property name="text" >
+    <string>&amp;Save Log...</string>
+   </property>
+  </action>
+  <action name="uiDebugLevel0ACT" >
+   <property name="checkable" >
+    <bool>true</bool>
+   </property>
+   <property name="text" >
+    <string>Level 0</string>
+   </property>
+  </action>
+  <action name="uiDebugLevel1ACT" >
+   <property name="checkable" >
+    <bool>true</bool>
+   </property>
+   <property name="text" >
+    <string>Level 1</string>
+   </property>
+  </action>
+  <action name="uiDebugLevel2ACT" >
+   <property name="checkable" >
+    <bool>true</bool>
+   </property>
+   <property name="text" >
+    <string>Level 2</string>
+   </property>
+  </action>
+  <action name="uiDebugLevel3ACT" >
+   <property name="checkable" >
+    <bool>true</bool>
+   </property>
+   <property name="text" >
+    <string>Level 3</string>
+   </property>
+  </action>
+  <action name="uiDebugLevel0ACT" >
+   <property name="text" >
+    <string>Level &amp;0</string>
+   </property>
+  </action>
+  <action name="uiDebugLevel1ACT" >
+   <property name="text" >
+    <string>Level &amp;1</string>
+   </property>
+  </action>
+  <action name="uiDebugLevel2ACT" >
+   <property name="text" >
+    <string>Level &amp;2</string>
+   </property>
+  </action>
+  <action name="uiDebugLevel3ACT" >
+   <property name="text" >
+    <string>Level &amp;3</string>
+   </property>
+  </action>
+  <action name="uiClearLogACT" >
+   <property name="text" >
+    <string>&amp;Clear Log</string>
+   </property>
+  </action>
+  <action name="uiNewScriptACT" >
+   <property name="text" >
+    <string>&amp;New Script</string>
+   </property>
+  </action>
+  <action name="uiOpenScriptACT" >
+   <property name="text" >
+    <string>&amp;Open Script...</string>
+   </property>
+  </action>
+  <action name="uiRunScriptACT" >
+   <property name="text" >
+    <string>&amp;Run Script...</string>
+   </property>
+  </action>
+  <action name="action_Close" >
+   <property name="text" >
+    <string>&amp;Close</string>
+   </property>
+  </action>
+  <action name="uiCloseACT" >
+   <property name="text" >
+    <string>C&amp;lose</string>
+   </property>
+  </action>
+  <action name="uiSaveAsACT" >
+   <property name="text" >
+    <string>&amp;Save as...</string>
+   </property>
+  </action>
+  <action name="uiNewScripACT" >
+   <property name="text" >
+    <string>&amp;New Script...</string>
+   </property>
+  </action>
+  <action name="uiOpenScriptACT" >
+   <property name="text" >
+    <string>&amp;Open Script...</string>
+   </property>
+  </action>
+  <action name="uiRunScriptACT" >
+   <property name="text" >
+    <string>&amp;Run Script...</string>
+   </property>
+  </action>
+  <action name="uiAboutACT" >
+   <property name="text" >
+    <string>&amp;About BlurPython...</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

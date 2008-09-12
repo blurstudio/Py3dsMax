@@ -26,6 +26,9 @@ BOOL APIENTRY		DLLMain( HMODULE hModule, DWORD ul_reason, LPVOID lpReserved ) {
 			DisableThreadLibraryCalls( hModule );
 			break;
 		}
+		case DLL_PROCESS_DETACH: {
+			Py_Finalize();
+		}
 	}
 
 	return TRUE;
