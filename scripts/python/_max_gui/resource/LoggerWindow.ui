@@ -10,7 +10,7 @@
    </rect>
   </property>
   <property name="windowTitle" >
-   <string>Python Listener</string>
+   <string>Python Logger</string>
   </property>
   <widget class="QWidget" name="centralwidget" />
   <widget class="QMenuBar" name="uiMenuBar" >
@@ -22,25 +22,26 @@
      <height>19</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menu_Help" >
-    <property name="title" >
-     <string>&amp;Help</string>
-    </property>
-    <addaction name="uiAboutACT" />
-   </widget>
    <widget class="QMenu" name="uiFileMENU" >
+    <property name="title" >
+     <string>&amp;Options</string>
+    </property>
+    <addaction name="uiHintingEnabledACT" />
+    <addaction name="separator" />
+    <addaction name="uiSaveLogACT" />
+    <addaction name="uiClearLogACT" />
+   </widget>
+   <widget class="QMenu" name="uiScriptingMENU" >
     <property name="title" >
      <string>&amp;File</string>
     </property>
-    <addaction name="uiCloseACT" />
-    <addaction name="uiSaveAsACT" />
-    <addaction name="separator" />
-    <addaction name="uiNewScripACT" />
+    <addaction name="uiNewScriptACT" />
     <addaction name="uiOpenScriptACT" />
+    <addaction name="separator" />
     <addaction name="uiRunScriptACT" />
    </widget>
+   <addaction name="uiScriptingMENU" />
    <addaction name="uiFileMENU" />
-   <addaction name="menu_Help" />
   </widget>
   <widget class="QStatusBar" name="statusbar" />
   <action name="uiSaveLogACT" >
@@ -80,24 +81,36 @@
     <string>Level 3</string>
    </property>
   </action>
-  <action name="uiDebugLevel0ACT" >
+  <action name="uiNoDebugACT" >
+   <property name="checkable" >
+    <bool>true</bool>
+   </property>
    <property name="text" >
-    <string>Level &amp;0</string>
+    <string>&amp;Disabled</string>
    </property>
   </action>
-  <action name="uiDebugLevel1ACT" >
+  <action name="uiDebugLowACT" >
+   <property name="checkable" >
+    <bool>true</bool>
+   </property>
    <property name="text" >
-    <string>Level &amp;1</string>
+    <string>&amp;Low Level</string>
    </property>
   </action>
-  <action name="uiDebugLevel2ACT" >
+  <action name="uiDebugMidACT" >
+   <property name="checkable" >
+    <bool>true</bool>
+   </property>
    <property name="text" >
-    <string>Level &amp;2</string>
+    <string>&amp;Mid Level</string>
    </property>
   </action>
-  <action name="uiDebugLevel3ACT" >
+  <action name="uiDebugHighACT" >
+   <property name="checkable" >
+    <bool>true</bool>
+   </property>
    <property name="text" >
-    <string>Level &amp;3</string>
+    <string>&amp;High Level</string>
    </property>
   </action>
   <action name="uiClearLogACT" >
@@ -120,39 +133,15 @@
     <string>&amp;Run Script...</string>
    </property>
   </action>
-  <action name="action_Close" >
-   <property name="text" >
-    <string>&amp;Close</string>
+  <action name="uiHintingEnabledACT" >
+   <property name="checkable" >
+    <bool>true</bool>
    </property>
-  </action>
-  <action name="uiCloseACT" >
-   <property name="text" >
-    <string>C&amp;lose</string>
+   <property name="checked" >
+    <bool>true</bool>
    </property>
-  </action>
-  <action name="uiSaveAsACT" >
    <property name="text" >
-    <string>&amp;Save as...</string>
-   </property>
-  </action>
-  <action name="uiNewScripACT" >
-   <property name="text" >
-    <string>&amp;New Script...</string>
-   </property>
-  </action>
-  <action name="uiOpenScriptACT" >
-   <property name="text" >
-    <string>&amp;Open Script...</string>
-   </property>
-  </action>
-  <action name="uiRunScriptACT" >
-   <property name="text" >
-    <string>&amp;Run Script...</string>
-   </property>
-  </action>
-  <action name="uiAboutACT" >
-   <property name="text" >
-    <string>&amp;About BlurPython...</string>
+    <string>Use &amp;Auto-Complete</string>
    </property>
   </action>
  </widget>

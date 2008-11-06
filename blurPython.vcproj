@@ -267,7 +267,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy $(OutDir)\$(ProjectName).dlx $(MAX9PATH)\plugins\blur\&#x0D;&#x0A;copy $(OutDir)\$(ProjectName).dlx $(DEV_CODE)\bin\max\max9\&#x0D;&#x0A;"
+				CommandLine="copy $(OutDir)\$(ProjectName).dlx c:\max10\plugins\blur\&#x0D;&#x0A;copy $(OutDir)\$(ProjectName).dlx $(DEV_CODE)\bin\max\max9\&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration

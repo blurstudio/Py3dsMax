@@ -35,5 +35,5 @@ BOOL APIENTRY		DLLMain( HMODULE hModule, DWORD ul_reason, LPVOID lpReserved ) {
 }
 
 __declspec( dllexport ) void				LibInit()			{ BlurPythonInit(); }
-__declspec( dllexport ) const TCHAR*		LibDescription()	{ return _T( "Python MAXScript Extension" ); }
+__declspec( dllexport ) const TCHAR*		LibDescription()	{ return _T( "Py3dsMax Python Extension" ); }
 __declspec( dllexport ) ULONG				LibVersion()		{ return VERSION_3DSMAX; }

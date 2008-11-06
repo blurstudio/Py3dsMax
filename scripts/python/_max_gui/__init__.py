@@ -1,7 +1,7 @@
 ##
-#	\namespace	Q3dsMax
+#	\namespace	max_gui::__init__
 #
-#	\remarks	[REMARKS]
+#	\remarks	Initializes a Qt Application to allow for QDialogs & QMainWindows to run inside of a 3dsMax session
 #	
 #	\author		Eric Hulser
 #	\author		eric@blur.com
@@ -25,11 +25,14 @@ import pyHook
 # Basic 3dsMax Dialog Class
 
 class Dialog( QDialog ):
-	def __init__( self ):
-		QDialog.__init__( self, application.window() )
+	def __init__( self, *args ):
+		if ( not args ):
+			args = [core]
+			
+		QDialog.__init__( self, *args )
 	
 	def accept( self ):
-		application.closed( self )
+		app.closed( self )
 		QDialog.accept( self )
 	
 	def enterEvent( self, event ):
@@ -38,21 +41,24 @@ class Dialog( QDialog ):
 		QDialog.enterEvent( self, event )
 	
 	def closeEvent( self, event ):
-		application.closed( self )
+		app.closed( self )
 		QDialog.closeEvent( self, event )
 	
 	def launch( self ):
-		application.launch( self )
+		app.launch( self )
 	
 	def reject( self ):
-		application.closed( self )
+		app.closed( self )
 		QDialog.reject( self )
 
 #-------------------------------------------------------------------------------------------------------------
 
 class Window( QMainWindow ):
-	def __init__( self ):
-		QMainWindow.__init__( self, application.window() )
+	def __init__( self, *args ):
+		if ( not args ):
+			args = [core]
+			
+		QMainWindow.__init__( self, *args )
 		
 	def enterEvent( self, event ):
 		# Disabling the accelerators in 3dsMax allows keyboard entry for QDialogs
@@ -61,10 +67,10 @@ class Window( QMainWindow ):
 	
 	def closeEvent( self, event ):
 		QMainWindow.closeEvent( self, event )
-		application.closed( self )
+		app.closed( self )
 	
 	def launch( self ):
-		application.launch( self )
+		app.launch( self )
 
 #-------------------------------------------------------------------------------------------------------------
 
@@ -83,16 +89,6 @@ class MaxApplication( QApplication ):
 		self._timer.setInterval( 350 )
 		self.connect( self._timer, SIGNAL( 'timeout()' ), self.timeout )
 		
-		# Build Window
-		self._window = QWidget()
-		self._window.setWindowTitle( '3dsMaxWidget' )
-		handle 						= win32gui.FindWindow( 0, '3dsMaxWidget' )
-		left, right, width, height 	= win32gui.GetWindowRect( Py3dsMax.GetWindowHandle() )
-		win32gui.SetParent( handle, Py3dsMax.GetWindowHandle() )
-		
-		self._window.move( left, right )
-		self._window.resize( width, height )
-		
 		self._dialogs = []
 	
 	def closed( self, dialog ):
@@ -103,7 +99,6 @@ class MaxApplication( QApplication ):
 	
 	def kill( self ):
 		if ( self.isRunning() ):
-			Py3dsMax.mxs.messageBox( 'Unhooking Events!' )
 			self._hookManager.UnhookKeyboard()
 			self._hookManager.UnhookMouse()
 			self._running = False
@@ -125,8 +120,6 @@ class MaxApplication( QApplication ):
 	
 	def run( self ):
 		if ( not self.isRunning() ):
-			Py3dsMax.mxs.messageBox( 'Hooking Events!' )
-			
 			self._hookManager.HookKeyboard()
 			self._hookManager.HookMouse()
 			self._running = True
@@ -136,18 +129,43 @@ class MaxApplication( QApplication ):
 	def timeout( self ):
 		self.sendPostedEvents( None, -1 )
 		self._timer.start()
-	
-	def window( self ):
-		return self._window
 
 #-------------------------------------------------------------------------------------------------------------
-application		= None
-logger			= None
+# Build Gui
+
+app				= None
 
 # Initialize QApplication
 if ( not QApplication.instance() ):
-	application 	= MaxApplication()
+	app 	= MaxApplication()
+	app.setStyle( 'Plastique' )
 else:
-	application		= QApplication.instance()
+	app		= QApplication.instance()
+
+# Build Core
+core = QWidget()
+core.setWindowTitle( '3dsMaxWidget' )
+
+handle 						= win32gui.FindWindow( 0, '3dsMaxWidget' )
+left, right, width, height 	= win32gui.GetWindowRect( Py3dsMax.GetWindowHandle() )
+win32gui.SetParent( handle, Py3dsMax.GetWindowHandle() )
+
+core.move( left, right )
+core.resize( width, height )
 	
 #-------------------------------------------------------------------------------------------------------------
+# Create Default Gui Dialogs
+logger				= None
+progress			= None
+
+def init():
+	# Create Logger Window
+	global logger
+	from LoggerWindow 		import LoggerWindow
+	logger					= LoggerWindow()
+	logger.launch()
+	
+	# Create Progress Window
+	global progress
+	from ProgressDialog		import ProgressDialog
+	progress				= ProgressDialog()

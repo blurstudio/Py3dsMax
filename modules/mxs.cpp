@@ -15,43 +15,6 @@ MXSGlobals_dealloc( PyObject* self ) {
 	self->ob_type->tp_free(self);
 }
 
-static PyObject*
-MXSGlobals_isglobal( PyObject* self, PyObject* args ) {
-	char *command;
-
-	if ( !PyArg_ParseTuple( args, "s",&command ) )
-		return NULL;
-	
-	Value* result = globals->get( Name::intern( command ) );
-	if ( result ) {
-		Py_INCREF( Py_True );
-		return Py_True;
-	}
-	Py_INCREF( Py_False );
-	return Py_False;
-}
-
-static PyObject*
-MXSGlobals_lookup( PyObject* self, PyObject* args ) {
-	char *command;
-
-	if ( !PyArg_ParseTuple( args, "s", &command ) )
-		return NULL;
-
-	Value* result = globals->get( Name::intern( command ) );
-	if ( result ) {
-		return ObjectValueWrapper::pyintern( result );
-	}
-	Py_INCREF( Py_None );
-	return Py_None;
-}
-
-static PyMethodDef MXSGlobals_methods[] = {
-	{ "isGlobal",	(PyCFunction)MXSGlobals_isglobal,	METH_VARARGS,	"Checks to see if a given string is a maxscript global." },
-	{ "lookup",		(PyCFunction)MXSGlobals_lookup,		METH_VARARGS,	"Gets a global by its name from the maxscript globals." },
-	{NULL}
-};
-
 static PyObject *
 MXSGlobals_new( PyTypeObject *type, PyObject *args, PyObject *kwds ) {
 	MXSGlobals* self;
@@ -68,20 +31,15 @@ static PyObject*
 MXSGlobals_getattro( PyObject* self, PyObject* keyObj ) {
 	char* key = PyString_AsString( keyObj );
 
-	// Look up C++ methods first
-	PyObject* out	= Py_FindMethod( MXSGlobals_methods, (PyObject*) self, key );
-	if ( out ) { return out; }
-
 	// Look up globals
 	Value* result = globals->get( Name::intern( key ) );
 	if ( result ) {
 		return ObjectValueWrapper::pyintern( result );
 	}
-	else {
-		// Raise Exception
-		PyErr_SetString( PyExc_AttributeError, key );
-		return NULL;
-	}
+	
+	// Return None value for non-found items
+	Py_INCREF(Py_None);
+	return Py_None;
 }
 
 static int
@@ -93,19 +51,22 @@ MXSGlobals_setattro( PyObject* self, PyObject* keyObj, PyObject* value ) {
 	Value* keyName	= Name::intern( key );
 	Value* result	= (Value*) globals->get( keyName );
 
+	// Set Existing Global Variable
 	if ( result ) {
+		// Set Thunk
 		if ( is_thunk( result ) )				{ 
-			try { ((Thunk*) result)->assign( ObjectValueWrapper::intern( value ) ); }
-			catch ( AssignToConstError e ) { THROW_PYERROR( e, PyExc_AttributeError, -1 ); }
+			try								{ ((Thunk*) result)->assign( ObjectValueWrapper::intern( value ) ); }
+			catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_AttributeError, -1 ); }
+			catch ( ConversionError e )		{ THROW_PYERROR( e, PyExc_AttributeError, -1 ); }
+			catch ( AssignToConstError e )	{ THROW_PYERROR( e, PyExc_AttributeError, -1 ); }
+			catch ( ... )					{ 
+				PyErr_SetString( PyExc_AttributeError, TSTR( "Error occurred while trying to set: " ) + key );
+				return -1;
+			}
 		}
 		else { globals->set( keyName, ObjectValueWrapper::intern(value) ); }
 	}
-	else { 
-		one_typed_value_local( GlobalThunk* thunk );
-		vl.thunk = new GlobalThunk( keyName, ObjectValueWrapper::intern(value) );
-		globals->set( keyName, vl.thunk->make_heap_permanent() ); 
-		pop_value_locals();
-	}
+
 	return 0;
 }
 
@@ -138,7 +99,7 @@ static PyTypeObject MXSGlobalsType = {
     0,											// tp_weaklistoffset 
     0,											// tp_iter 
     0,											// tp_iternext 
-    MXSGlobals_methods,							// tp_methods 
+    0,											// tp_methods 
     0,											// tp_members 
     0,											// tp_getset 
     0,											// tp_base 

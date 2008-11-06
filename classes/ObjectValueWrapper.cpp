@@ -3,6 +3,7 @@
 #include "strings.h"
 #include "objsets.h"
 #include "Parser.h"
+#include "mathpro.h"
 #include <Python.h>
 #include <algorithm>
 
@@ -167,19 +168,40 @@ MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 	}
 }
 
+// __cmp__
 static int
-MXSValueWrapper_compare( MXSValueWrapper* self, MXSValueWrapper* other ) {
+MXSValueWrapper_compare( PyObject* self, PyObject* other ) {
 	int result = 1;
-	if ( self->value->eval() == other->value->eval() ) { result = 0; }
+
+	Value* mCheck	= ((MXSValueWrapper*) self)->value;
+	Value* oCheck	= ObjectValueWrapper::intern( other );
+
+	// Check the inputed value against the current value
+	if ( oCheck ) {
+		// Check direct pointers
+		if ( mCheck == oCheck || mCheck->eval() == oCheck->eval() )	{ result = 0; }
+		else {
+			// Check MAXScript __lt__, __eq__, __gt__
+			try { 
+				if		( mCheck->lt_vf( &oCheck, 1 ) == &true_value )		{ result = -1; }
+				else if ( mCheck->eq_vf( &oCheck, 1 ) == &true_value )		{ result = 0; } 
+				else if ( mCheck->gt_vf( &oCheck, 1 ) == &true_value )		{ result = 1; }
+			}
+			catch ( MAXScriptException e ) { THROW_PYERROR( e, PyExc_Exception, -1 ); }
+		}
+	}
+
 	return result;
 }
 
 static void
 MXSValueWrapper_dealloc( MXSValueWrapper* self ) {
 	self->ob_type->tp_free((PyObject *)self);
-	self->value->gc_trace();
+	self->value->make_collectable();
+	self->value = NULL;
 }
 
+// __getattr__
 static PyObject*
 MXSValueWrapper_getattr( MXSValueWrapper* self, char* key ) {
 	Value* result;
@@ -210,6 +232,7 @@ MXSValueWrapper_getattr( MXSValueWrapper* self, char* key ) {
 	return ObjectValueWrapper::pyintern( result );
 }
 
+// __setattr__
 static int
 MXSValueWrapper_setattr( MXSValueWrapper* self, char* key, PyObject* value ) {
 	Value* result;
@@ -239,6 +262,7 @@ MXSValueWrapper_setattr( MXSValueWrapper* self, char* key, PyObject* value ) {
 	return 0;
 }
 
+// __str__
 static PyObject*
 MXSValueWrapper_str( MXSValueWrapper* self ) {
 	try {
@@ -252,47 +276,181 @@ MXSValueWrapper_str( MXSValueWrapper* self ) {
 	}
 	catch ( ... ) { return PyString_FromString( "<mxs.ERROR_INVALID_VALUE>" ); }
 }
+//----------------------------------------------			NUMBER METHODS				------------------------------------------------
+
+// __add__
+static PyObject*
+MXSValueWrapper_add( PyObject* self, PyObject* other ) {
+	Value* vOther = ObjectValueWrapper::intern( other );
+
+	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->plus_vf( &vOther, 1 ) ); }
+	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( NoMethodError e )		{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+}
+
+// __sub__
+static PyObject*
+MXSValueWrapper_subtract( PyObject* self, PyObject* other ) {
+	Value* vOther = ObjectValueWrapper::intern( other );
+
+	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->minus_vf( &vOther, 1 ) ); }
+	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( NoMethodError e )		{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+}
+
+// __div__
+static PyObject*
+MXSValueWrapper_divide( PyObject* self, PyObject* other ) {
+	Value* vOther = ObjectValueWrapper::intern( other );
+
+	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->div_vf( &vOther, 1 ) ); }
+	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( NoMethodError e )		{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+}
+
+// __mul__
+static PyObject*
+MXSValueWrapper_multiply( PyObject* self, PyObject* other ) {
+	Value* vOther = ObjectValueWrapper::intern( other );
+
+	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->times_vf( &vOther, 1 ) ); }
+	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( NoMethodError e )		{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+}
+
+// __pow__
+static PyObject*
+MXSValueWrapper_power( PyObject* self, PyObject* other, PyObject* args ) {
+	Value* vOther = ObjectValueWrapper::intern( other );
+
+	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->pwr_vf( &vOther, 1 ) ); }
+	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( NoMethodError e )		{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+}
+
+// __abs__
+static PyObject*
+MXSValueWrapper_absolute( PyObject* self ) {
+	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->abs_vf( NULL, 0 ) ); }
+	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( NoMethodError e )		{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+}
+
+// __int__
+static PyObject*
+MXSValueWrapper_int( PyObject* self ) {
+	try								{ return PyInt_FromLong( ((MXSValueWrapper*) self)->value->to_int() ); }
+	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+}
+
+// __float__
+static PyObject*
+MXSValueWrapper_float( PyObject* self ) {
+	try								{ return PyFloat_FromDouble( ((MXSValueWrapper*) self)->value->to_float() ); }
+	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+}
+
+// __neg__
+static PyObject*
+MXSValueWrapper_negative( PyObject* self ) { return MXSValueWrapper_multiply( self, PyInt_FromLong( -1 ) ); }
+
+// __nonzero__
+static bool
+MXSValueWrapper_nonzero( PyObject* self ) { return true; }
+
+static PyNumberMethods proxy_as_number = {
+	(binaryfunc) MXSValueWrapper_add,			// nb_add
+	(binaryfunc) MXSValueWrapper_subtract,		// nb_subtract
+	(binaryfunc) MXSValueWrapper_multiply,		// nb_multiply
+	(binaryfunc) MXSValueWrapper_divide,		// nb_divide
+	0,											// nb_remainder
+	0,											// nb_divmod
+	(ternaryfunc) MXSValueWrapper_power,		// nb_power
+	(unaryfunc)	MXSValueWrapper_negative,		// nb_negative	
+	0,											// nb_positive
+	(unaryfunc) MXSValueWrapper_absolute,		// nb_absolute
+	(inquiry) MXSValueWrapper_nonzero,			// nb_nonzero
+	0,											// nb_invert
+	0,											// nb_lshift
+	0,											// nb_rshift
+	0,											// nb_and
+	0,											// nb_xor
+	0,											// nb_or
+	0,											// nb_coerce
+	(unaryfunc)	MXSValueWrapper_int,			// nb_int
+	0,											// nb_long
+	(unaryfunc) MXSValueWrapper_float,			// nb_float
+	0,											// nb_oct
+	0,											// nb_hex
+	0,											// nb_inplace_add
+	0,											// nb_inplace_subtract
+    0,											// nb_inplace_multiply
+	0,											// nb_inplace_divide
+	0,											// nb_inplace_remainder
+	0,											// nb_inplace_power
+	0,											// nb_inplace_lshift
+	0,											// nb_inplace_rshift
+	0,											// nb_inplace_and
+	0,											// nb_inplace_xor
+	0,											// nb_inplace_or
+};
 
 static PyTypeObject MXSValueWrapperType = {
     PyObject_HEAD_INIT(NULL)
-    0,											// ob_size
-    "mxs",										// tp_name
-    sizeof(MXSValueWrapper),					// tp_basicsize
-    0,											// tp_itemsize
-    (destructor)MXSValueWrapper_dealloc,		// tp_dealloc
-    0,											// tp_print
-    (getattrfunc)MXSValueWrapper_getattr,		// tp_getattr
-    (setattrfunc)MXSValueWrapper_setattr,		// tp_setattr
-    (cmpfunc)MXSValueWrapper_compare,			// tp_compare
-    0,											// tp_repr
-    0,											// tp_as_number
-    0,											// tp_as_sequence
-    0,											// tp_as_mapping
-    0,											// tp_hash 
-    (ternaryfunc)MXSValueWrapper_call,			// tp_call
-    (reprfunc)MXSValueWrapper_str,				// tp_str
-    0,											// tp_getattro
-    0,											// tp_setattro
-    0,											// tp_as_buffer
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,	// tp_flags
-    "Maxscript Value Wrapper",					// tp_doc 
-    0,											// tp_traverse 
-    0,											// tp_clear 
-    0,											// tp_richcompare 
-    0,											// tp_weaklistoffset 
-    0,											// tp_iter 
-    0,											// tp_iternext 
-    0,											// tp_methods 
-    0,											// tp_members 
-    0,											// tp_getset 
-    0,											// tp_base 
-    0,											// tp_dict 
-    0,											// tp_descr_get 
-    0,											// tp_descr_set 
-    0,											// tp_dictoffset 
-    0,											// tp_init 
-    0,											// tp_alloc 
-    MXSValueWrapper_new,						// tp_new 
+    0,																	// ob_size
+    "mxs",																// tp_name
+    sizeof(MXSValueWrapper),											// tp_basicsize
+    0,																	// tp_itemsize
+    (destructor)MXSValueWrapper_dealloc,								// tp_dealloc
+    0,																	// tp_print
+    (getattrfunc)MXSValueWrapper_getattr,								// tp_getattr
+    (setattrfunc)MXSValueWrapper_setattr,								// tp_setattr
+    (cmpfunc)MXSValueWrapper_compare,									// tp_compare
+    0,																	// tp_repr
+    &proxy_as_number,													// tp_as_number
+    0,																	// tp_as_sequence
+    0,																	// tp_as_mapping
+    0,																	// tp_hash 
+    (ternaryfunc)MXSValueWrapper_call,									// tp_call
+    (reprfunc)MXSValueWrapper_str,										// tp_str
+    0,																	// tp_getattro
+    0,																	// tp_setattro
+    0,																	// tp_as_buffer
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES,	// tp_flags
+    "Maxscript Value Wrapper",											// tp_doc 
+    0,																	// tp_traverse 
+    0,																	// tp_clear 
+    0,																	// tp_richcompare 
+    0,																	// tp_weaklistoffset 
+    0,																	// tp_iter 
+    0,																	// tp_iternext 
+    0,																	// tp_methods 
+    0,																	// tp_members 
+    0,																	// tp_getset 
+    0,																	// tp_base 
+    0,																	// tp_dict 
+    0,																	// tp_descr_get 
+    0,																	// tp_descr_set 
+    0,																	// tp_dictoffset 
+    0,																	// tp_init 
+    0,																	// tp_alloc 
+    MXSValueWrapper_new,												// tp_new 
 };
 
 //------------------------------------------------------------------------------------------------------------------
@@ -463,8 +621,8 @@ PyObject*	ObjectValueWrapper::pyintern( Value* item )		{
 		}
 		else {
 			MXSValueWrapper* wrapper	= (MXSValueWrapper*) MXSValueWrapper_new( &MXSValueWrapperType, NULL, NULL );
-			wrapper->value				= item;
-			wrapper->value->mark_in_use();
+			wrapper->value				= item->make_heap_permanent();
+//			wrapper->value->mark_in_use();
 			return (PyObject*) wrapper;
 		}
 	}

@@ -14,8 +14,5 @@ if ( python != undefined ) then (
 	
 	-- Run any files in the $scripts/python/startup folder
 	for file in getFiles( scriptPath + "/startup/*.py" ) do python.run( file )
-	
-	-- Launch the Python Logger
-	python.run ( scriptPath + "/max_gui/LoggerWindow.py" )
 )
 else ( print "BlurPython has not been loaded." )
