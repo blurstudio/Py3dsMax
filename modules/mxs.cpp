@@ -56,13 +56,7 @@ MXSGlobals_setattro( PyObject* self, PyObject* keyObj, PyObject* value ) {
 		// Set Thunk
 		if ( is_thunk( result ) )				{ 
 			try								{ ((Thunk*) result)->assign( ObjectValueWrapper::intern( value ) ); }
-			catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_AttributeError, -1 ); }
-			catch ( ConversionError e )		{ THROW_PYERROR( e, PyExc_AttributeError, -1 ); }
-			catch ( AssignToConstError e )	{ THROW_PYERROR( e, PyExc_AttributeError, -1 ); }
-			catch ( ... )					{ 
-				PyErr_SetString( PyExc_AttributeError, TSTR( "Error occurred while trying to set: " ) + key );
-				return -1;
-			}
+			CATCH_ERRORS( -1 );
 		}
 		else { globals->set( keyName, ObjectValueWrapper::intern(value) ); }
 	}

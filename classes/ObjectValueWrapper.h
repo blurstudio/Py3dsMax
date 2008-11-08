@@ -4,10 +4,29 @@
 #include "structs.h"
 #include <string>
 
-#define		THROW_PYERROR( ERROR, PYEXCEPT, VALUE )			StringStream* s = new StringStream(); \
+#define		THROW_PYERROR( ERROR, PYEXCEPT, RETURN )		StringStream* s = new StringStream(); \
 															ERROR.sprin1( s ); \
 															PyErr_SetString( PYEXCEPT, s->to_string() ); \
-															return VALUE
+															return RETURN
+
+#define		CATCH_ERRORS( RETURN )							catch ( AccessorError e )				{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
+															catch ( ArgCountError e )				{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
+															catch ( AssignToConstError e )			{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
+															catch ( CompileError e )				{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
+															catch ( ConversionError e )				{ THROW_PYERROR( e, PyExc_TypeError, RETURN ); } \
+															catch ( DebuggerRuntimeError e )		{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
+															catch ( IncompatibleTypes e )			{ THROW_PYERROR( e, PyExc_TypeError, RETURN ); } \
+															catch ( NoMethodError e	)				{ THROW_PYERROR( e, PyExc_AssertionError, RETURN ); } \
+															catch ( RuntimeError e )				{ THROW_PYERROR( e, PyExc_RuntimeError, RETURN ); } \
+															catch ( SignalException e )				{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
+															catch ( TypeError e )					{ THROW_PYERROR( e, PyExc_TypeError, RETURN ); } \
+															catch ( UnknownSystemException e )		{ THROW_PYERROR( e, PyExc_SystemError, RETURN ); } \
+															catch ( UserThrownError e )				{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
+															catch ( MAXScriptException e )			{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
+															catch ( ... ) { \
+																PyErr_SetString( PyExc_Exception, "Unknown Error Occured." ); \
+																return RETURN; \
+															}
 
 visible_class( ObjectValueWrapper );
 class ObjectValueWrapper : public Value {
@@ -30,8 +49,9 @@ class ObjectValueWrapper : public Value {
 		Value*				get_property(	Value** arg_list, int count );
 		Value*				lookup(			std::string key );
 		static Value*		intern(			PyObject* item );
-		static PyObject*	pyintern(		Value* item );
 		static bool			init();
+		static bool			isWrapper(		PyObject* item );
+		static PyObject*	pyintern(		Value* item );
 		PyObject*			pyobject();
 		void				sprin1(			CharStream* s );
 		char*				to_string();

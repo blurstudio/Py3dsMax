@@ -3,7 +3,9 @@
 #include "strings.h"
 #include "objsets.h"
 #include "Parser.h"
+#include "maxobj.h"
 #include "mathpro.h"
+
 #include <Python.h>
 #include <algorithm>
 
@@ -142,28 +144,13 @@ MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 		
 		pop_value_local_array( arg_list );
 		pop_alloc_frame();
+
 		return ObjectValueWrapper::pyintern( result );
 	}
 	else {
 		try										{ result = self->value->eval()->apply( NULL, 0 ); }
-		catch ( AccessorError e )				{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-		catch ( ArgCountError e )				{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-		catch ( AssignToConstError e )			{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-		catch ( CompileError e )				{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-		catch ( ConversionError e )				{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-		catch ( DebuggerRuntimeError e )		{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-		catch ( IncompatibleTypes e )			{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-		catch ( NoMethodError e	)				{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-		catch ( RuntimeError e )				{ THROW_PYERROR( e, PyExc_RuntimeError, NULL ); }
-		catch ( SignalException e )				{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-		catch ( TypeError e )					{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-		catch ( UnknownSystemException e )		{ THROW_PYERROR( e, PyExc_SystemError, NULL ); }
-		catch ( UserThrownError e )				{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-		catch ( MAXScriptException e )			{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-		catch ( ... ) { 
-			PyErr_SetString( PyExc_RuntimeError, "Unknown Error Occured." );
-			return NULL;
-		}
+		CATCH_ERRORS( NULL );
+
 		return ObjectValueWrapper::pyintern( result );
 	}
 }
@@ -171,7 +158,7 @@ MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 // __cmp__
 static int
 MXSValueWrapper_compare( PyObject* self, PyObject* other ) {
-	int result = 1;
+	int result = -1;
 
 	Value* mCheck	= ((MXSValueWrapper*) self)->value;
 	Value* oCheck	= ObjectValueWrapper::intern( other );
@@ -179,15 +166,15 @@ MXSValueWrapper_compare( PyObject* self, PyObject* other ) {
 	// Check the inputed value against the current value
 	if ( oCheck ) {
 		// Check direct pointers
-		if ( mCheck == oCheck || mCheck->eval() == oCheck->eval() )	{ result = 0; }
+		if ( mCheck == oCheck || mCheck->eval() == oCheck->eval() )		{ result = 0; }
 		else {
 			// Check MAXScript __lt__, __eq__, __gt__
 			try { 
-				if		( mCheck->lt_vf( &oCheck, 1 ) == &true_value )		{ result = -1; }
-				else if ( mCheck->eq_vf( &oCheck, 1 ) == &true_value )		{ result = 0; } 
-				else if ( mCheck->gt_vf( &oCheck, 1 ) == &true_value )		{ result = 1; }
+				if		( mCheck->eq_vf( &oCheck, 1 ) == &true_value )	{ result = 0; } 
+				else if	( mCheck->lt_vf( &oCheck, 1 ) == &true_value )	{ result = -1; }
+				else if ( mCheck->gt_vf( &oCheck, 1 ) == &true_value )	{ result = 1; }
 			}
-			catch ( MAXScriptException e ) { THROW_PYERROR( e, PyExc_Exception, -1 ); }
+			catch ( ... ) {}
 		}
 	}
 
@@ -205,26 +192,12 @@ MXSValueWrapper_dealloc( MXSValueWrapper* self ) {
 static PyObject*
 MXSValueWrapper_getattr( MXSValueWrapper* self, char* key ) {
 	Value* result;
+	Value* keyName = Name::intern( key );
 
-	try										{ result = self->value->eval()->_get_property( Name::intern( key ) ); }
-	catch ( AccessorError e )				{ THROW_PYERROR( e, PyExc_AttributeError, NULL ); }
-	catch ( ArgCountError e )				{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-	catch ( AssignToConstError e )			{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-	catch ( CompileError e )				{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-	catch ( ConversionError e )				{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-	catch ( DebuggerRuntimeError e )		{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-	catch ( IncompatibleTypes e )			{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-	catch ( NoMethodError e	)				{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-	catch ( RuntimeError e )				{ THROW_PYERROR( e, PyExc_RuntimeError, NULL ); }
-	catch ( SignalException e )				{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-	catch ( TypeError e )					{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-	catch ( UnknownSystemException e )		{ THROW_PYERROR( e, PyExc_SystemError, NULL ); }
-	catch ( UserThrownError e )				{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-	catch ( MAXScriptException e )			{ THROW_PYERROR( e, PyExc_Exception, NULL ); }
-	catch ( ... ) { 
-		PyErr_SetString( PyExc_RuntimeError, "Unknown Error Occured." );
-		return NULL;
-	}
+	// Map generic items
+	try	{ result = self->value->eval()->_get_property( keyName ); }
+	CATCH_ERRORS( NULL );
+
 	if ( !result ) {
 		PyErr_SetString( PyExc_AttributeError, key );
 		return NULL;
@@ -236,25 +209,21 @@ MXSValueWrapper_getattr( MXSValueWrapper* self, char* key ) {
 static int
 MXSValueWrapper_setattr( MXSValueWrapper* self, char* key, PyObject* value ) {
 	Value* result;
-	try										{ result = self->value->_set_property( Name::intern( key ), ObjectValueWrapper::intern( value ) ); }
-	catch ( AccessorError e )				{ THROW_PYERROR( e, PyExc_AttributeError, -1 ); }
-	catch ( ArgCountError e )				{ THROW_PYERROR( e, PyExc_Exception, -1 ); }
-	catch ( AssignToConstError e )			{ THROW_PYERROR( e, PyExc_Exception, -1 ); }
-	catch ( CompileError e )				{ THROW_PYERROR( e, PyExc_Exception, -1 ); }
-	catch ( ConversionError e )				{ THROW_PYERROR( e, PyExc_Exception, -1 ); }
-	catch ( DebuggerRuntimeError e )		{ THROW_PYERROR( e, PyExc_Exception, -1 ); }
-	catch ( IncompatibleTypes e )			{ THROW_PYERROR( e, PyExc_Exception, -1 ); }
-	catch ( NoMethodError e	)				{ THROW_PYERROR( e, PyExc_Exception, -1 ); }
-	catch ( RuntimeError e )				{ THROW_PYERROR( e, PyExc_RuntimeError, -1 ); }
-	catch ( SignalException e )				{ THROW_PYERROR( e, PyExc_Exception, -1 ); }
-	catch ( TypeError e )					{ THROW_PYERROR( e, PyExc_Exception, -1 ); }
-	catch ( UnknownSystemException e )		{ THROW_PYERROR( e, PyExc_SystemError, -1 ); }
-	catch ( UserThrownError e )				{ THROW_PYERROR( e, PyExc_Exception, -1 ); }
-	catch ( MAXScriptException e )			{ THROW_PYERROR( e, PyExc_Exception, -1 ); }
-	catch ( ... ) { 
-		PyErr_SetString( PyExc_RuntimeError, "Unknown Error Occured." );
-		return -1;
+	Value* check	= self->value->eval();
+	Value* keyName	= Name::intern( key );
+	Value* maxValue	= ObjectValueWrapper::intern( value );
+
+	// Set Controllers
+	if ( keyName == Name::intern( "controller" ) && is_subAnim( check ) ) {
+		if ( is_controller( maxValue ) ) {
+			try { ((MAXSubAnim*) check)->set_max_controller( (MAXControl*) maxValue ); }
+			CATCH_ERRORS( NULL );
+		}
 	}
+
+	try										{ result = check->_set_property( keyName, maxValue ); }
+	CATCH_ERRORS( NULL );
+
 	if ( !result ) {
 		PyErr_SetString( PyExc_AttributeError, key );
 		return NULL;
@@ -274,20 +243,208 @@ MXSValueWrapper_str( MXSValueWrapper* self ) {
 		s->puts( ">" );
 		return PyString_FromString( s->to_string() );
 	}
-	catch ( ... ) { return PyString_FromString( "<mxs.ERROR_INVALID_VALUE>" ); }
+	CATCH_ERRORS(NULL);
 }
+
+//----------------------------------------------			SEQUENCE METHODS				------------------------------------------------
+
+// __len__
+static int
+MXSValueWrapper_length( PyObject* self )		{ 
+	Value* check = ((MXSValueWrapper*) self)->value->eval();
+
+	// Calculate Array size
+	if ( is_array( check ) )			{ return (int) ((Array*) check)->size; }
+
+	// Calculate Collection size
+	else {
+		try { return check->_get_property( Name::intern( "count" ) )->to_int(); }
+		CATCH_ERRORS(-1);
+	}
+	
+	PyErr_SetString( PyExc_TypeError, TSTR( "MXSValueWrapper_item: Cannot convert to <list>: " ) + PyString_AsString( MXSValueWrapper_str( (MXSValueWrapper*) self )) );
+	return -1;
+}
+
+// __getitem__
+static PyObject*
+MXSValueWrapper_objitem( PyObject* self, PyObject* key ) {
+	Value* check = ((MXSValueWrapper*) self)->value->eval();
+
+	// Grab an item by index
+	if ( key->ob_type == &PyInt_Type ) {
+		// Grab the collection's count
+		int count;
+		int index = (int) PyInt_AsLong( key );
+		try { count = check->_get_property( Name::intern( "count" ) )->to_int(); }
+		CATCH_ERRORS(NULL);
+
+		if ( 0 <= index && index < count ) {
+			Value* maxIndex		= Integer::intern( index + 1 );
+			return ObjectValueWrapper::pyintern( check->get_vf( &maxIndex, 1 ) );
+		}
+
+		PyErr_SetString( PyExc_IndexError, TSTR( "__getitem__ error: index is out of range" ) );
+		return NULL;
+	}
+
+	// Grab an item by some other mapping
+	else {
+		Value* keyValue = ObjectValueWrapper::intern( key );
+		try { return ObjectValueWrapper::pyintern( check->get_vf( &keyValue, 1 ) ); }
+		CATCH_ERRORS(NULL);
+	}
+}
+static PyObject*
+MXSValueWrapper_item( PyObject* self, int index ) { return MXSValueWrapper_objitem( self, PyInt_FromLong( index ) ); }
+
+// __setitem__
+static int
+MXSValueWrapper_setobjitem( PyObject* self, PyObject* key, PyObject* value ) {
+	Value* check = ((MXSValueWrapper*) self)->value->eval();
+
+	Value* keyValue;
+
+	// Convert to index
+	if ( key->ob_type == &PyInt_Type ) {
+		int index		= (int) PyInt_AsLong( key );
+		int count		= MXSValueWrapper_length( self );
+		if ( 0 <= index && index < count )
+			keyValue	= Integer::intern( index );
+		else {
+			PyErr_SetString( PyExc_IndexError, "__setitem__ error: index is out of range" );
+			return -1;
+		}
+	}
+	// Keep as key
+	else keyValue		= ObjectValueWrapper::intern( key );
+
+	// Build the arguments
+	Value** arg_list;
+
+	init_thread_locals();
+	push_alloc_frame();
+	value_local_array( arg_list, 2 );
+
+	// Set the arguments
+	arg_list[0]		= keyValue;
+	arg_list[1]		= ObjectValueWrapper::intern( value );
+
+	try { check->put_vf( arg_list, 2 ); }
+	catch ( AccessorError e )				{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_Exception, -1 ); 
+	}
+	catch ( ArgCountError e )				{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_Exception, -1 ); 
+	}
+	catch ( AssignToConstError e )			{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_Exception, -1 ); 
+	}
+	catch ( CompileError e )				{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_Exception, -1 ); 
+	}
+	catch ( ConversionError e )				{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_Exception, -1 ); 
+	}
+	catch ( DebuggerRuntimeError e )		{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_Exception, -1 ); 
+	}
+	catch ( IncompatibleTypes e )			{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_Exception, -1 ); 
+	}
+	catch ( NoMethodError e	)				{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_Exception, -1 ); 
+	}
+	catch ( RuntimeError e )				{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_RuntimeError, -1 ); 
+	}
+	catch ( SignalException e )				{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_Exception, -1 ); 
+	}
+	catch ( TypeError e )					{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_Exception, -1 ); 
+	}
+	catch ( UnknownSystemException e )		{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_SystemError, -1 ); 
+	}
+	catch ( UserThrownError e )				{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_Exception, -1 ); 
+	}
+	catch ( MAXScriptException e )			{ 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		THROW_PYERROR( e, PyExc_Exception, -1 ); 
+	}
+	catch ( ... ) { 
+		pop_value_local_array( arg_list );
+		pop_alloc_frame();
+		PyErr_SetString( PyExc_RuntimeError, "Unknown Error Occured." );
+		return -1;
+	}
+	
+	pop_value_local_array( arg_list );
+	pop_alloc_frame();
+	
+	return 0;
+}
+
+static int
+MXSValueWrapper_setitem( PyObject* self, int index, PyObject* value ) { return MXSValueWrapper_setobjitem( self, PyInt_FromLong( index ), value ); }
+
+static PySequenceMethods proxy_as_sequence = {
+	(inquiry) MXSValueWrapper_length,			// sq_length
+	0,											// sq_concat
+	0,											// sq_repeat
+	(intargfunc) MXSValueWrapper_item,			// sq_item
+	0,											// sq_slice
+	(intobjargproc) MXSValueWrapper_setitem,	// sq_ass_item
+	0,											// sq_ass_slice
+	0,											// sq_contains
+	0,											// sq_inplace_concat
+	0,											// sq_inplace_repeat
+};
+
+static PyMappingMethods proxy_as_mapping = {
+	(inquiry) MXSValueWrapper_length,				// mp_length
+	(binaryfunc) MXSValueWrapper_objitem,			// mp_subscript
+	(objobjargproc) MXSValueWrapper_setobjitem,		// mp_ass_subscript
+};
+
 //----------------------------------------------			NUMBER METHODS				------------------------------------------------
+
 
 // __add__
 static PyObject*
 MXSValueWrapper_add( PyObject* self, PyObject* other ) {
 	Value* vOther = ObjectValueWrapper::intern( other );
-
-	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->plus_vf( &vOther, 1 ) ); }
-	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( NoMethodError e )		{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->eval()->plus_vf( &vOther, 1 ) ); }
+	CATCH_ERRORS( NULL );
 }
 
 // __sub__
@@ -295,11 +452,8 @@ static PyObject*
 MXSValueWrapper_subtract( PyObject* self, PyObject* other ) {
 	Value* vOther = ObjectValueWrapper::intern( other );
 
-	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->minus_vf( &vOther, 1 ) ); }
-	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( NoMethodError e )		{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->eval()->minus_vf( &vOther, 1 ) ); }
+	CATCH_ERRORS( NULL );
 }
 
 // __div__
@@ -307,11 +461,8 @@ static PyObject*
 MXSValueWrapper_divide( PyObject* self, PyObject* other ) {
 	Value* vOther = ObjectValueWrapper::intern( other );
 
-	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->div_vf( &vOther, 1 ) ); }
-	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( NoMethodError e )		{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->eval()->div_vf( &vOther, 1 ) ); }
+	CATCH_ERRORS( NULL );
 }
 
 // __mul__
@@ -319,11 +470,8 @@ static PyObject*
 MXSValueWrapper_multiply( PyObject* self, PyObject* other ) {
 	Value* vOther = ObjectValueWrapper::intern( other );
 
-	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->times_vf( &vOther, 1 ) ); }
-	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( NoMethodError e )		{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->eval()->times_vf( &vOther, 1 ) ); }
+	CATCH_ERRORS( NULL );
 }
 
 // __pow__
@@ -331,39 +479,29 @@ static PyObject*
 MXSValueWrapper_power( PyObject* self, PyObject* other, PyObject* args ) {
 	Value* vOther = ObjectValueWrapper::intern( other );
 
-	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->pwr_vf( &vOther, 1 ) ); }
-	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( NoMethodError e )		{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->eval()->pwr_vf( &vOther, 1 ) ); }
+	CATCH_ERRORS( NULL );
 }
 
 // __abs__
 static PyObject*
 MXSValueWrapper_absolute( PyObject* self ) {
-	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->abs_vf( NULL, 0 ) ); }
-	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( NoMethodError e )		{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->eval()->abs_vf( NULL, 0 ) ); }
+	CATCH_ERRORS( NULL );
 }
 
 // __int__
 static PyObject*
 MXSValueWrapper_int( PyObject* self ) {
-	try								{ return PyInt_FromLong( ((MXSValueWrapper*) self)->value->to_int() ); }
-	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	try								{ return PyInt_FromLong( ((MXSValueWrapper*) self)->value->eval()->to_int() ); }
+	CATCH_ERRORS( NULL );
 }
 
 // __float__
 static PyObject*
 MXSValueWrapper_float( PyObject* self ) {
-	try								{ return PyFloat_FromDouble( ((MXSValueWrapper*) self)->value->to_float() ); }
-	catch ( IncompatibleTypes e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( TypeError e )			{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
-	catch ( MAXScriptException e )	{ THROW_PYERROR( e, PyExc_ArithmeticError, NULL ); }
+	try								{ return PyFloat_FromDouble( ((MXSValueWrapper*) self)->value->eval()->to_float() ); }
+	CATCH_ERRORS( NULL );
 }
 
 // __neg__
@@ -424,8 +562,8 @@ static PyTypeObject MXSValueWrapperType = {
     (cmpfunc)MXSValueWrapper_compare,									// tp_compare
     0,																	// tp_repr
     &proxy_as_number,													// tp_as_number
-    0,																	// tp_as_sequence
-    0,																	// tp_as_mapping
+    &proxy_as_sequence,													// tp_as_sequence
+    &proxy_as_mapping,													// tp_as_mapping
     0,																	// tp_hash 
     (ternaryfunc)MXSValueWrapper_call,									// tp_call
     (reprfunc)MXSValueWrapper_str,										// tp_str
@@ -510,6 +648,7 @@ Value*		ObjectValueWrapper::get_vf(				Value** arg_list, int count ) {
 Value*		ObjectValueWrapper::get_props_vf(		Value** arg_list, int count ) {
 	return ObjectValueWrapper::intern( PyObject_Dir( this->_pyobj ) );
 }
+bool		ObjectValueWrapper::isWrapper(			PyObject* item ) { return item->ob_type == &MXSValueWrapperType; }
 Value*		ObjectValueWrapper::eq_vf(				Value** arg_list, int count ) {
 	check_arg_count( eq, 1, count );
 	if ( is_pyobject(arg_list[0]->eval()) )
@@ -589,24 +728,6 @@ PyObject*	ObjectValueWrapper::pyintern( Value* item )		{
 		else if	( is_string( eval_item ) || is_name( eval_item ) )			{ return PyString_FromString( eval_item->to_string() ); }
 		else if ( is_integer( eval_item ) )									{ return PyInt_FromLong( eval_item->to_int() ); }
 		else if ( is_float( eval_item ) )									{ return PyFloat_FromDouble( eval_item->to_float() ); }
-		else if ( is_array( eval_item ) )								{
-			int count		= ((Array*) eval_item)->size;
-			PyObject* out	= PyList_New( count );
-			for ( int i = 0; i < count; i++ ) PyList_SetItem( out, i, ObjectValueWrapper::pyintern( ((Array*) eval_item)->data[i] ) );
-			return out;
-		}
-		else if ( is_collection( eval_item ) )									{
-			NodeTab nodeTab;
-			nodeTab.SetCount(0);
-			Value* args[2]	= { NULL, (Value*)&nodeTab };
-			node_map m		= { NULL, collect_nodes, args, 2 };
-			eval_item->map(m);
-
-			PyObject* out	= PyList_New(0);
-			for( int i = 0; i < nodeTab.Count(); i++ ) { if ( nodeTab[i] ) PyList_Append( out, ObjectValueWrapper::pyintern( MAXNode::intern(nodeTab[i]) ) ); };
-			
-			return out;
-		}
 		else if ( eval_item == &ok || eval_item == &true_value )		{
 			Py_INCREF( Py_True );
 			return Py_True;
@@ -622,7 +743,6 @@ PyObject*	ObjectValueWrapper::pyintern( Value* item )		{
 		else {
 			MXSValueWrapper* wrapper	= (MXSValueWrapper*) MXSValueWrapper_new( &MXSValueWrapperType, NULL, NULL );
 			wrapper->value				= item->make_heap_permanent();
-//			wrapper->value->mark_in_use();
 			return (PyObject*) wrapper;
 		}
 	}
