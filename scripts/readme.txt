@@ -1,1 +1,0 @@
-Copy this scripts folder to the <max_root>/scripts folder to run python initialization on startup
