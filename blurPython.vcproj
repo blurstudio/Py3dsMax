@@ -186,7 +186,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release|Win32"
+			Name="Max10_Python24|Win32"
 			OutputDirectory="$(SolutionDir)output\$(ConfigurationName)"
 			IntermediateDirectory="output\$(ConfigurationName)"
 			ConfigurationType="2"
@@ -212,7 +212,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="c:\python24\include"
+				AdditionalIncludeDirectories="c:\max_sdk\max10\include\maxscrpt;c:\max_sdk\max10\include;c:\python24\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_CRD_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -235,7 +235,7 @@
 				ShowProgress="2"
 				OutputFile="$(OutDir)\$(ProjectName).dlx"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;c:\python24\libs&quot;"
+				AdditionalLibraryDirectories="c:\max_sdk\max10\lib;c:\python24\libs"
 				IgnoreDefaultLibraryNames="python24_d.lib"
 				ModuleDefinitionFile="blurPython.def"
 				GenerateDebugInformation="true"
@@ -271,7 +271,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release|x64"
+			Name="Max10_Python24|x64"
 			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="2"

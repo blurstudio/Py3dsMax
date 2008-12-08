@@ -15,10 +15,10 @@ Global
 		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Debug|Win32.Build.0 = Debug|Win32
 		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Debug|x64.ActiveCfg = Debug|x64
 		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Debug|x64.Build.0 = Debug|x64
-		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Release|Win32.ActiveCfg = Release|Win32
-		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Release|Win32.Build.0 = Release|Win32
-		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Release|x64.ActiveCfg = Release|x64
-		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Release|x64.Build.0 = Release|x64
+		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Release|Win32.ActiveCfg = Max10_Python24|Win32
+		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Release|Win32.Build.0 = Max10_Python24|Win32
+		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Release|x64.ActiveCfg = Max10_Python24|x64
+		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Release|x64.Build.0 = Max10_Python24|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
