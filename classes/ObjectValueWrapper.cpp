@@ -52,7 +52,8 @@ MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 		// Build Keywords
 		if ( keyword_count != -1 ) {
 			PyObject *key, *value;
-			int pos		= 0;
+			//int pos		= 0;		// Use for Python24
+			Py_ssize_t pos = 0;			// Use for Python25
 			int key_pos = 0;
 			arg_list[ count ] = &keyarg_marker;
 			while ( PyDict_Next( kwds, &pos, &key, &value ) ) {
@@ -418,12 +419,15 @@ static int
 MXSValueWrapper_setitem( PyObject* self, int index, PyObject* value ) { return MXSValueWrapper_setobjitem( self, PyInt_FromLong( index ), value ); }
 
 static PySequenceMethods proxy_as_sequence = {
-	(inquiry) MXSValueWrapper_length,			// sq_length
+//	(inquiry) MXSValueWrapper_length,			// sq_length		// Use for Python24
+	(lenfunc) MXSValueWrapper_length,			// sq_length		// Use for Python25
 	0,											// sq_concat
 	0,											// sq_repeat
-	(intargfunc) MXSValueWrapper_item,			// sq_item
+//	(intargfunc) MXSValueWrapper_item,			// sq_item			// Use for Python24
+	(ssizeargfunc) MXSValueWrapper_item,		// sq_item			// Use for Python25
 	0,											// sq_slice
-	(intobjargproc) MXSValueWrapper_setitem,	// sq_ass_item
+//	(intobjargproc) MXSValueWrapper_setitem,	// sq_ass_item		// Use for Python24
+	(ssizeobjargproc) MXSValueWrapper_setitem,	// sq_ass_item		// Use for Python25
 	0,											// sq_ass_slice
 	0,											// sq_contains
 	0,											// sq_inplace_concat
@@ -431,7 +435,8 @@ static PySequenceMethods proxy_as_sequence = {
 };
 
 static PyMappingMethods proxy_as_mapping = {
-	(inquiry) MXSValueWrapper_length,				// mp_length
+//	(inquiry) MXSValueWrapper_length,				// mp_length	// Use for Python24
+	(lenfunc) MXSValueWrapper_length,				// mp_length	// Use for Python25
 	(binaryfunc) MXSValueWrapper_objitem,			// mp_subscript
 	(objobjargproc) MXSValueWrapper_setobjitem,		// mp_ass_subscript
 };
