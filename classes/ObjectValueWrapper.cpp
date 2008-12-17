@@ -13,6 +13,12 @@
 #include "max\include\exports.h"
 #include "ObjectValueWrapper.h"
 
+// Use if compiling for Python24 mappings
+typedef inquiry			lenfunc;
+typedef int				Py_ssize_t;
+typedef intobjargproc	ssizeobjargproc;
+typedef	intargfunc		ssizeargfunc;
+
 //-------------------------------------------------------------------------------------------------------------------------------
 
 typedef struct {
@@ -52,7 +58,7 @@ MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 		// Build Keywords
 		if ( keyword_count != -1 ) {
 			PyObject *key, *value;
-			//int pos		= 0;		// Use for Python24
+
 			Py_ssize_t pos = 0;			// Use for Python25
 			int key_pos = 0;
 			arg_list[ count ] = &keyarg_marker;
@@ -171,7 +177,7 @@ MXSValueWrapper_compare( PyObject* self, PyObject* other ) {
 		else {
 			// Check MAXScript __lt__, __eq__, __gt__
 			try { 
-				if		( mCheck->eq_vf( &oCheck, 1 ) == &true_value )	{ result = 0; } 
+				if		( mCheck->eq_vf( &oCheck, 1 ) == &true_value )  { result = 0; } //( mCheck == oCheck ) { result = 0; } 
 				else if	( mCheck->lt_vf( &oCheck, 1 ) == &true_value )	{ result = -1; }
 				else if ( mCheck->gt_vf( &oCheck, 1 ) == &true_value )	{ result = 1; }
 			}
@@ -419,15 +425,12 @@ static int
 MXSValueWrapper_setitem( PyObject* self, int index, PyObject* value ) { return MXSValueWrapper_setobjitem( self, PyInt_FromLong( index ), value ); }
 
 static PySequenceMethods proxy_as_sequence = {
-//	(inquiry) MXSValueWrapper_length,			// sq_length		// Use for Python24
-	(lenfunc) MXSValueWrapper_length,			// sq_length		// Use for Python25
+	(lenfunc) MXSValueWrapper_length,			// sq_length
 	0,											// sq_concat
 	0,											// sq_repeat
-//	(intargfunc) MXSValueWrapper_item,			// sq_item			// Use for Python24
-	(ssizeargfunc) MXSValueWrapper_item,		// sq_item			// Use for Python25
+	(ssizeargfunc) MXSValueWrapper_item,		// sq_item
 	0,											// sq_slice
-//	(intobjargproc) MXSValueWrapper_setitem,	// sq_ass_item		// Use for Python24
-	(ssizeobjargproc) MXSValueWrapper_setitem,	// sq_ass_item		// Use for Python25
+	(ssizeobjargproc) MXSValueWrapper_setitem,	// sq_ass_item
 	0,											// sq_ass_slice
 	0,											// sq_contains
 	0,											// sq_inplace_concat
@@ -435,8 +438,7 @@ static PySequenceMethods proxy_as_sequence = {
 };
 
 static PyMappingMethods proxy_as_mapping = {
-//	(inquiry) MXSValueWrapper_length,				// mp_length	// Use for Python24
-	(lenfunc) MXSValueWrapper_length,				// mp_length	// Use for Python25
+	(lenfunc) MXSValueWrapper_length,				// mp_length
 	(binaryfunc) MXSValueWrapper_objitem,			// mp_subscript
 	(objobjargproc) MXSValueWrapper_setobjitem,		// mp_ass_subscript
 };
@@ -447,65 +449,75 @@ static PyMappingMethods proxy_as_mapping = {
 // __add__
 static PyObject*
 MXSValueWrapper_add( PyObject* self, PyObject* other ) {
-	Value* vOther = ObjectValueWrapper::intern( other );
-	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->eval()->plus_vf( &vOther, 1 ) ); }
+	Value* vSelf	= ObjectValueWrapper::intern( self );
+	Value* vOther	= ObjectValueWrapper::intern( other );
+
+	try								{ return ObjectValueWrapper::pyintern( vSelf->plus_vf( &vOther, 1 ) ); }
 	CATCH_ERRORS( NULL );
 }
 
 // __sub__
 static PyObject*
 MXSValueWrapper_subtract( PyObject* self, PyObject* other ) {
-	Value* vOther = ObjectValueWrapper::intern( other );
+	Value* vSelf	= ObjectValueWrapper::intern( self );
+	Value* vOther	= ObjectValueWrapper::intern( other );
 
-	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->eval()->minus_vf( &vOther, 1 ) ); }
+
+	try								{ return ObjectValueWrapper::pyintern( vSelf->minus_vf( &vOther, 1 ) ); }
 	CATCH_ERRORS( NULL );
 }
 
 // __div__
 static PyObject*
 MXSValueWrapper_divide( PyObject* self, PyObject* other ) {
-	Value* vOther = ObjectValueWrapper::intern( other );
+	Value* vSelf	= ObjectValueWrapper::intern( self );
+	Value* vOther	= ObjectValueWrapper::intern( other );
 
-	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->eval()->div_vf( &vOther, 1 ) ); }
+	try	{ return ObjectValueWrapper::pyintern( vSelf->div_vf( &vOther, 1 ) ); }
 	CATCH_ERRORS( NULL );
 }
 
 // __mul__
 static PyObject*
 MXSValueWrapper_multiply( PyObject* self, PyObject* other ) {
-	Value* vOther = ObjectValueWrapper::intern( other );
+	Value* vSelf	= ObjectValueWrapper::intern( self );
+	Value* vOther	= ObjectValueWrapper::intern( other );
 
-	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->eval()->times_vf( &vOther, 1 ) ); }
+	try	{ return ObjectValueWrapper::pyintern( vSelf->times_vf( &vOther, 1 ) ); }
 	CATCH_ERRORS( NULL );
 }
 
 // __pow__
 static PyObject*
 MXSValueWrapper_power( PyObject* self, PyObject* other, PyObject* args ) {
-	Value* vOther = ObjectValueWrapper::intern( other );
+	Value* vSelf	= ObjectValueWrapper::intern( self );
+	Value* vOther	= ObjectValueWrapper::intern( other );
 
-	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->eval()->pwr_vf( &vOther, 1 ) ); }
+	try	{ return ObjectValueWrapper::pyintern( vSelf->pwr_vf( &vOther, 1 ) ); }
 	CATCH_ERRORS( NULL );
 }
 
 // __abs__
 static PyObject*
 MXSValueWrapper_absolute( PyObject* self ) {
-	try								{ return ObjectValueWrapper::pyintern( ((MXSValueWrapper*) self)->value->eval()->abs_vf( NULL, 0 ) ); }
+	Value* vSelf	= ObjectValueWrapper::intern( self );
+	try	{ return ObjectValueWrapper::pyintern( vSelf->abs_vf( NULL, 0 ) ); }
 	CATCH_ERRORS( NULL );
 }
 
 // __int__
 static PyObject*
 MXSValueWrapper_int( PyObject* self ) {
-	try								{ return PyInt_FromLong( ((MXSValueWrapper*) self)->value->eval()->to_int() ); }
+	Value* vSelf	= ObjectValueWrapper::intern( self );
+	try	{ return PyInt_FromLong( vSelf->to_int() ); }
 	CATCH_ERRORS( NULL );
 }
 
 // __float__
 static PyObject*
 MXSValueWrapper_float( PyObject* self ) {
-	try								{ return PyFloat_FromDouble( ((MXSValueWrapper*) self)->value->eval()->to_float() ); }
+	Value* vSelf	= ObjectValueWrapper::intern( self );
+	try	{ return PyFloat_FromDouble( vSelf->to_float() ); }
 	CATCH_ERRORS( NULL );
 }
 
