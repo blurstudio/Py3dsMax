@@ -4,6 +4,7 @@
 
 #include "../classes/ObjectValueWrapper.h"
 #include "maxscrpt.h"
+#include "hold.h"
 #include "Name.h"
 
 typedef struct {
@@ -212,6 +213,7 @@ max_dispatchmessage( PyObject* self, PyObject* args ) {
 		msg.message = PyInt_AsLong( PyTuple_GetItem( args, 0 ) );
 		msg.wParam	= PyInt_AsLong( PyTuple_GetItem( args, 1 ) );
 		msg.lParam	= PyInt_AsLong( PyTuple_GetItem( args, 2 ) );
+
 		GetCOREInterface()->TranslateAndDispatchMAXMessage( msg );
 
 		Py_INCREF( Py_None );
@@ -223,9 +225,50 @@ max_dispatchmessage( PyObject* self, PyObject* args ) {
 	}
 }
 
+static PyObject *
+max_redo( PyObject* self ) {
+	ExecuteMAXScriptScript( "max redo" );
+
+	Py_INCREF(Py_True);
+	return Py_True;
+}
+
+static PyObject *
+max_undo( PyObject* self ) {
+	ExecuteMAXScriptScript( "max undo" );
+
+	Py_INCREF(Py_True);
+	return Py_True;
+}
+
+static PyObject *
+max_undoOn( PyObject* self ) {
+	theHold.Begin();
+
+	Py_INCREF(Py_True);
+	return Py_True;
+}
+
+static PyObject *
+max_undoOff( PyObject* self, PyObject *args ) {
+	char *name;
+
+	if ( !PyArg_ParseTuple( args, "s",&name ) )
+		return NULL;
+
+	theHold.Accept( name );
+
+	Py_INCREF( Py_True );
+	return Py_True;
+}
+
 static PyMethodDef module_methods[] = {
 	{ "GetWindowHandle",	(PyCFunction)max_getwindowhandle,	METH_NOARGS,	"Get the HWND value of the max window." },
 	{ "DispatchMessage",	(PyCFunction)max_dispatchmessage,	METH_VARARGS,	"Send the MAX Window a message." },
+	{ "redo",				(PyCFunction)max_redo,				METH_NOARGS,	"Redo's the lastest stack." },
+	{ "undo",				(PyCFunction)max_undo,				METH_NOARGS,	"Undo's the latest stack." },
+	{ "undoOn",				(PyCFunction)max_undoOn,			METH_NOARGS,	"Starts a new undo stack." },
+	{ "undoOff",			(PyCFunction)max_undoOff,			METH_VARARGS,	"Finishes the current undo stack." },
 	{ NULL, NULL, 0, NULL }
 };
 
