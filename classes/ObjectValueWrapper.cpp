@@ -13,11 +13,11 @@
 #include "max\include\exports.h"
 #include "ObjectValueWrapper.h"
 
-// Use if compiling for Python24 mappings
-typedef inquiry			lenfunc;
-typedef int				Py_ssize_t;
-typedef intobjargproc	ssizeobjargproc;
-typedef	intargfunc		ssizeargfunc;
+// Use if compiling for Python24 mappings, comment out for Python25+
+//typedef inquiry			lenfunc;
+//typedef int				Py_ssize_t;
+//typedef intobjargproc	ssizeobjargproc;
+//typedef	intargfunc		ssizeargfunc;
 
 //-------------------------------------------------------------------------------------------------------------------------------
 

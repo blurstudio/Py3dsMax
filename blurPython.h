@@ -7,6 +7,7 @@ PyMODINIT_FUNC init_max();
 
 void BlurPythonInit() {
 	init_plugin( "blurPython", 1000 );
+
 	Py_Initialize();
 	init_max();
 
