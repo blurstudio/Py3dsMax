@@ -207,6 +207,11 @@ max_getwindowhandle( PyObject* self ) {
 }
 
 static PyObject*
+max_getplugininstance( PyObject* self ) {
+	return PyInt_FromLong( (long)hInstance );
+}
+
+static PyObject*
 max_dispatchmessage( PyObject* self, PyObject* args ) {
 	if ( args && PyTuple_Size(args) == 3 ) {
 		MSG msg;
@@ -264,6 +269,7 @@ max_undoOff( PyObject* self, PyObject *args ) {
 
 static PyMethodDef module_methods[] = {
 	{ "GetWindowHandle",	(PyCFunction)max_getwindowhandle,	METH_NOARGS,	"Get the HWND value of the max window." },
+	{ "GetPluginInstance",	(PyCFunction)max_getplugininstance,	METH_NOARGS,	"Get the HINSTANCE value of the max window." },
 	{ "DispatchMessage",	(PyCFunction)max_dispatchmessage,	METH_VARARGS,	"Send the MAX Window a message." },
 	{ "redo",				(PyCFunction)max_redo,				METH_NOARGS,	"Redo's the lastest stack." },
 	{ "undo",				(PyCFunction)max_undo,				METH_NOARGS,	"Undo's the latest stack." },

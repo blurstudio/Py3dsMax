@@ -14,10 +14,10 @@
 #include "ObjectValueWrapper.h"
 
 // Use if compiling for Python24 mappings, comment out for Python25+
-//typedef inquiry			lenfunc;
-//typedef int				Py_ssize_t;
-//typedef intobjargproc	ssizeobjargproc;
-//typedef	intargfunc		ssizeargfunc;
+typedef inquiry			lenfunc;
+typedef int				Py_ssize_t;
+typedef intobjargproc	ssizeobjargproc;
+typedef	intargfunc		ssizeargfunc;
 
 //-------------------------------------------------------------------------------------------------------------------------------
 
