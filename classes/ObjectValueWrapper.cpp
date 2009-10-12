@@ -243,11 +243,7 @@ static PyObject*
 MXSValueWrapper_str( MXSValueWrapper* self ) {
 	try {
 		StringStream* s = new StringStream(0);
-		s->puts( "<mxs." );
-		self->value->eval()->tag->sprin1(s);
-		s->puts( " " );
 		self->value->eval()->sprin1(s);
-		s->puts( ">" );
 		return PyString_FromString( s->to_string() );
 	}
 	CATCH_ERRORS(NULL);
@@ -759,7 +755,7 @@ PyObject*	ObjectValueWrapper::pyintern( Value* item )		{
 		}
 		else {
 			MXSValueWrapper* wrapper	= (MXSValueWrapper*) MXSValueWrapper_new( &MXSValueWrapperType, NULL, NULL );
-			wrapper->value				= item->make_heap_permanent();
+			wrapper->value				= item->make_heap_static();
 			return (PyObject*) wrapper;
 		}
 	}
