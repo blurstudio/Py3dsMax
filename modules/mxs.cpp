@@ -49,18 +49,25 @@ MXSGlobals_setattro( PyObject* self, PyObject* keyObj, PyObject* value ) {
 
 	char* key		= PyString_AsString( keyObj );
 
-	Value* keyName	= Name::intern( key );
-	Value* result	= (Value*) globals->get( keyName );
+	MXS_PROTECT( three_value_locals( keyName, result, errlog ) );
+	vl.keyName		= Name::intern( key );
+	vl.result		= (Value*) globals->get( vl.keyName );
 
 	// Set Existing Global Variable
-	if ( result ) {
-		// Set Thunk
-		if ( is_thunk( result ) )				{ 
-			try								{ ((Thunk*) result)->assign( ObjectValueWrapper::intern( value ) ); }
-			CATCH_ERRORS( -1 );
+	if ( vl.result ) {
+		try {
+			// Set Thunk
+			if ( is_thunk( vl.result ) )				{ 
+				((Thunk*) vl.result)->assign( ObjectValueWrapper::intern(value) );
+			}
+			else {
+				globals->set( vl.keyName, ObjectValueWrapper::intern(value) );
+			}
 		}
-		else { globals->set( keyName, ObjectValueWrapper::intern(value) ); }
+		CATCH_ERRORS();
 	}
+
+	MXS_CLEANUP();
 
 	return 0;
 }

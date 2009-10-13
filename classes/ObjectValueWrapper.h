@@ -4,28 +4,30 @@
 #include "structs.h"
 #include <string>
 
-#define		THROW_PYERROR( ERROR, PYEXCEPT, RETURN )		StringStream* s = new StringStream(); \
-															ERROR.sprin1( s ); \
-															PyErr_SetString( PYEXCEPT, s->to_string() ); \
-															return RETURN
+#define		MXS_CLEARERRORS()								clear_error_source_data(); \
+															restore_current_frames(); \
+															MAXScript_signals = 0;
 
-#define		CATCH_ERRORS( RETURN )							catch ( AccessorError e )				{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
-															catch ( ArgCountError e )				{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
-															catch ( AssignToConstError e )			{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
-															catch ( CompileError e )				{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
-															catch ( ConversionError e )				{ THROW_PYERROR( e, PyExc_TypeError, RETURN ); } \
-															catch ( DebuggerRuntimeError e )		{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
-															catch ( IncompatibleTypes e )			{ THROW_PYERROR( e, PyExc_TypeError, RETURN ); } \
-															catch ( NoMethodError e	)				{ THROW_PYERROR( e, PyExc_AssertionError, RETURN ); } \
-															catch ( RuntimeError e )				{ THROW_PYERROR( e, PyExc_RuntimeError, RETURN ); } \
-															catch ( SignalException e )				{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
-															catch ( TypeError e )					{ THROW_PYERROR( e, PyExc_TypeError, RETURN ); } \
-															catch ( UnknownSystemException e )		{ THROW_PYERROR( e, PyExc_SystemError, RETURN ); } \
-															catch ( UserThrownError e )				{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
-															catch ( MAXScriptException e )			{ THROW_PYERROR( e, PyExc_Exception, RETURN ); } \
-															catch ( ... ) { \
-																PyErr_SetString( PyExc_Exception, "Unknown Error Occured." ); \
-																return RETURN; \
+#define		MXS_PROTECT( VALUE_LOCALS )						init_thread_locals(); \
+															push_alloc_frame(); \
+															VALUE_LOCALS; \
+															save_current_frames();
+
+#define		MXS_CLEANUP()									pop_value_locals(); \
+															pop_alloc_frame();
+
+#define		MXS_EVAL(VARIABLE)								VARIABLE = ((MXSValueWrapper*) self)->value; \
+															while ( VARIABLE != NULL && is_thunk( VARIABLE ) ) \
+																VARIABLE = VARIABLE->eval();
+
+#define		THROW_PYERROR( ERROR, PYEXCEPT )				vl.errlog = new StringStream(); \
+															ERROR.sprin1( (StringStream*) vl.errlog ); \
+															PyErr_SetString( PYEXCEPT, vl.errlog->to_string() ); \
+															MXS_CLEARERRORS();
+
+#define		CATCH_ERRORS()									catch ( ... ) { \
+																MXS_CLEARERRORS(); \
+																PyErr_SetString( PyExc_Exception, "MAXScript Error Occured. See MAXScript Logger for more details." ); \
 															}
 
 visible_class( ObjectValueWrapper );
