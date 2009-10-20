@@ -233,7 +233,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="comctl32.lib odbc32.lib odbccp32.lib version.lib wininet.lib mnmath.lib geom.lib expr.lib bmm.lib maxscrpt.lib core.lib maxutil.lib Vfw32.lib mesh.lib msxml2.lib"
 				ShowProgress="2"
-				OutputFile="$(OutDir)\$(ProjectName).dlx"
+				OutputFile="$(OutDir)\$(ProjectName)24.dlx"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="c:\max_sdk\max10\lib;c:\python24\libs"
 				IgnoreDefaultLibraryNames="python24_d.lib"

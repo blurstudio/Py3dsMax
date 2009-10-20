@@ -128,7 +128,9 @@ MXSValueWrapper_compare( PyObject* self, PyObject* other ) {
 				else if	( vl.mCheck->lt_vf( &vl.oCheck, 1 ) == &true_value )	{ result = -1; }
 				else if ( vl.mCheck->gt_vf( &vl.oCheck, 1 ) == &true_value )	{ result = 1; }
 			}
-			CATCH_ERRORS();
+			catch ( ... ) {
+				MXS_CLEARERRORS();
+			}
 		}
 	}
 
@@ -206,22 +208,28 @@ MXSValueWrapper_setattr( MXSValueWrapper* self, char* key, PyObject* value ) {
 // __str__
 static PyObject*
 MXSValueWrapper_str( MXSValueWrapper* self ) {
-	MXS_PROTECT( three_value_locals( check, stream, errlog ) );
+	// Convert name values to strings
+	if ( is_name( self->value ) )
+		return PyString_FromString( self->value->to_string() );
 
-	MXS_EVAL(vl.check);
-	vl.stream = new StringStream(0);
+	else {
+		MXS_PROTECT( three_value_locals( check, stream, errlog ) );
 
-	PyObject* output = NULL;
+		MXS_EVAL(vl.check);
+		vl.stream = new StringStream(0);
 
-	try { 
-		vl.check->sprin1((StringStream *) vl.stream); 
-		output = PyString_FromString( vl.stream->to_string() );
+		PyObject* output = NULL;
+
+		try { 
+			vl.check->sprin1((StringStream *) vl.stream); 
+			output = PyString_FromString( vl.stream->to_string() );
+		}
+		CATCH_ERRORS();
+
+		MXS_CLEANUP();
+
+		return output;
 	}
-	CATCH_ERRORS();
-
-	MXS_CLEANUP();
-
-	return output;
 }
 
 //----------------------------------------------			SEQUENCE METHODS				------------------------------------------------
@@ -697,7 +705,7 @@ PyObject*	ObjectValueWrapper::pyintern( Value* item )		{
 	if			( item ) {
 		Value* eval_item = item->eval();
 		if		( is_pyobject( eval_item ) )								{ ((ObjectValueWrapper*) eval_item)->pyobject(); }
-		else if	( is_string( eval_item ) || is_name( eval_item ) )			{ return PyString_FromString( eval_item->to_string() ); }
+		else if	( is_string( eval_item ) )									{ return PyString_FromString( eval_item->to_string() ); }
 		else if ( is_integer( eval_item ) )									{ return PyInt_FromLong( eval_item->to_int() ); }
 		else if ( is_float( eval_item ) )									{ return PyFloat_FromDouble( eval_item->to_float() ); }
 		else if ( eval_item == &ok || eval_item == &true_value )		{
