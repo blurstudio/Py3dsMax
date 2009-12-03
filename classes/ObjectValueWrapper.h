@@ -2,6 +2,8 @@
 #define		__OBJECTVALUEWRAPPER_H__
 
 #include "structs.h"
+#include "excepts.h"
+
 #include <string>
 
 #define		MXS_CLEARERRORS()								clear_error_source_data(); \
@@ -20,12 +22,15 @@
 															while ( VARIABLE != NULL && is_thunk( VARIABLE ) ) \
 																VARIABLE = VARIABLE->eval();
 
-#define		THROW_PYERROR( ERROR, PYEXCEPT )				vl.errlog = new StringStream(); \
-															ERROR.sprin1( (StringStream*) vl.errlog ); \
-															PyErr_SetString( PYEXCEPT, vl.errlog->to_string() ); \
-															MXS_CLEARERRORS();
+#define		THROW_PYERROR( ERROR, PYEXCEPT )				MXS_CLEARERRORS(); \
+															StringStream* log = new StringStream(); \
+															ERROR.sprin1( log ); \
+															PyErr_SetString( PYEXCEPT, log->to_string() );
 
-#define		CATCH_ERRORS()									catch ( ... ) { \
+#define		CATCH_ERRORS()									catch ( MAXScriptException e ) { \
+																THROW_PYERROR( e, PyExc_Exception ); \
+															} \
+															catch ( ... ) { \
 																MXS_CLEARERRORS(); \
 																PyErr_SetString( PyExc_Exception, "MAXScript Error Occured. See MAXScript Logger for more details." ); \
 															}
@@ -53,6 +58,7 @@ class ObjectValueWrapper : public Value {
 		static Value*		intern(			PyObject* item );
 		static bool			init();
 		static bool			isWrapper(		PyObject* item );
+		static void			logError(		MAXScriptException err );
 		static PyObject*	pyintern(		Value* item );
 		PyObject*			pyobject();
 		void				sprin1(			CharStream* s );
