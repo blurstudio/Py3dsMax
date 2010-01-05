@@ -9,17 +9,20 @@
 
 typedef struct {
 	PyObject_HEAD
+	PyObject* cache;
 } MXSGlobals;
 
 static void
 MXSGlobals_dealloc( PyObject* self ) {
+	PyDict_Type.tp_free( ((MXSGlobals*) self)->cache );
 	self->ob_type->tp_free(self);
 }
 
 static PyObject *
 MXSGlobals_new( PyTypeObject *type, PyObject *args, PyObject *kwds ) {
 	MXSGlobals* self;
-	self = (MXSGlobals *)type->tp_alloc(type, 0);
+	self		= (MXSGlobals *)type->tp_alloc(type, 0);
+	self->cache = PyDict_New();
 	return (PyObject *)self;
 }
 
@@ -30,17 +33,26 @@ MXSGlobals_init( PyObject* self, PyObject *args, PyObject *kwds ) {
 
 static PyObject*
 MXSGlobals_getattro( PyObject* self, PyObject* keyObj ) {
-	char* key = PyString_AsString( keyObj );
+	PyObject* pyresult = PyDict_GetItem( ((MXSGlobals*) self)->cache, keyObj );
 
-	// Look up globals
-	Value* result = globals->get( Name::intern( key ) );
-	if ( result ) {
-		return ObjectValueWrapper::pyintern( result );
+	if ( !pyresult ) {
+		char* key = PyString_AsString( keyObj );
+
+		// Look up globals
+		Value* result = globals->get( Name::intern( key ) );
+		if ( result ) {
+			pyresult = ObjectValueWrapper::pyintern( result );
+			/*if ( ObjectValueWrapper::isWrapper( pyresult ) ) {
+				PyDict_SetItem( ((MXSGlobals*) self)->cache, keyObj, pyresult );
+			}*/
+		}
+		else {
+			Py_INCREF(Py_None);
+			pyresult = Py_None;
+		}
 	}
 	
-	// Return None value for non-found items
-	Py_INCREF(Py_None);
-	return Py_None;
+	return pyresult;
 }
 
 static int

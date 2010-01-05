@@ -18,6 +18,14 @@
 #define		MXS_CLEANUP()									pop_value_locals(); \
 															pop_alloc_frame();
 
+#define		MXS_GC_PROTECT( RETURN )						if ( ((MXSValueWrapper*) self)->value ) { \
+																((MXSValueWrapper*) self)->value->gc_trace(); \
+															} \
+															else { \
+																PyErr_SetString( PyExc_Exception, "Attempting to access Maxscript wrapper value that has been collected by MAXScript garbage collection." ); \
+																return RETURN; \
+															}
+
 #define		MXS_EVAL(VARIABLE)								VARIABLE = ((MXSValueWrapper*) self)->value; \
 															while ( VARIABLE != NULL && is_thunk( VARIABLE ) ) \
 																VARIABLE = VARIABLE->eval();
@@ -28,11 +36,12 @@
 															PyErr_SetString( PYEXCEPT, log->to_string() );
 
 #define		CATCH_ERRORS()									catch ( MAXScriptException e ) { \
-																THROW_PYERROR( e, PyExc_Exception ); \
+																MXS_CLEARERRORS(); \
+																PyErr_SetString( PyExc_Exception, "MAXScript error occurred" ); \
 															} \
 															catch ( ... ) { \
 																MXS_CLEARERRORS(); \
-																PyErr_SetString( PyExc_Exception, "MAXScript Error Occured. See MAXScript Logger for more details." ); \
+																PyErr_SetString( PyExc_Exception, "MAXScript error occurred" ); \
 															}
 
 visible_class( ObjectValueWrapper );
@@ -59,7 +68,7 @@ class ObjectValueWrapper : public Value {
 		static bool			init();
 		static bool			isWrapper(		PyObject* item );
 		static void			logError(		MAXScriptException err );
-		static PyObject*	pyintern(		Value* item );
+		static PyObject*	pyintern(		Value* item, bool make_static = true );
 		PyObject*			pyobject();
 		void				sprin1(			CharStream* s );
 		char*				to_string();
