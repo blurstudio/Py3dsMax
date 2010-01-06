@@ -37,7 +37,7 @@ MXSGlobals_getattro( PyObject* self, PyObject* keyObj ) {
 	if ( result ) {
 		return ObjectValueWrapper::pyintern( result );
 	}
-	
+
 	Py_INCREF(Py_None);
 	return Py_None;
 }

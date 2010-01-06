@@ -29,6 +29,7 @@ typedef struct {
 
 static PyObject *
 MXSValueWrapper_new( PyTypeObject *type, PyObject *args, PyObject *kwds ) {
+	mprintf( "allocating new memory\n" );
 	MXSValueWrapper* self;
 	self = (MXSValueWrapper *)type->tp_alloc(type, 0);
 	self->value = NULL;
@@ -39,7 +40,6 @@ static PyObject*
 MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 	//----------------------------------------------
 	// Calculate the number of arguments and keywords to determine how large to allocate the test
-	MXS_GC_PROTECT( NULL );
 
 	int arg_count		= (args)					? PyTuple_Size( args )	: 0;
 	int keyword_count	= (kwds)					? PyDict_Size( kwds )	: -1;
@@ -112,8 +112,6 @@ MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 // __cmp__
 static int
 MXSValueWrapper_compare( PyObject* self, PyObject* other ) {
-	MXS_GC_PROTECT( -2 );
-
 	int result = -1;
 
 	MXS_PROTECT( three_value_locals( mCheck, oCheck, errlog ) );
@@ -145,18 +143,18 @@ MXSValueWrapper_compare( PyObject* self, PyObject* other ) {
 
 static void
 MXSValueWrapper_dealloc( MXSValueWrapper* self ) {
-	// remove from the cache
-	PyMapping_DelItem( ObjectValueWrapper::cache, (PyObject*) self );
-	self->ob_type->tp_free((PyObject *)self);
+	mprintf( "deallocating memory\n" );
+
+	// Remove the maxscript protected value
 	Protector::removeProtectedValue( self->value );
 	self->value = NULL;
+
+	self->ob_type->tp_free((PyObject *)self);
 }
 
 // __getattr__
 static PyObject*
 MXSValueWrapper_getattr( MXSValueWrapper* self, char* key ) {
-	MXS_GC_PROTECT( NULL );
-
 	MXS_PROTECT( four_value_locals( result, keyName, check, errlog ) );
 
 	vl.keyName	= Name::intern(key);
@@ -184,8 +182,6 @@ MXSValueWrapper_getattr( MXSValueWrapper* self, char* key ) {
 // __setattr__
 static int
 MXSValueWrapper_setattr( MXSValueWrapper* self, char* key, PyObject* value ) {
-	MXS_GC_PROTECT( -1 );
-
 	MXS_PROTECT( five_value_locals( result, check, keyName, maxValue, errlog ) );
 
 	// Convert the value to an evaluated version of the thunk
@@ -219,8 +215,6 @@ MXSValueWrapper_setattr( MXSValueWrapper* self, char* key, PyObject* value ) {
 // __str__
 static PyObject*
 MXSValueWrapper_str( MXSValueWrapper* self ) {
-	MXS_GC_PROTECT( NULL );
-
 	// Convert name values to strings
 	if ( is_name( self->value ) )
 		return PyString_FromString( self->value->to_string() );
@@ -257,8 +251,6 @@ MXSValueWrapper_str( MXSValueWrapper* self ) {
 // __len__
 static int
 MXSValueWrapper_length( PyObject* self )		{
-	MXS_GC_PROTECT( -1 );
-
 	MXS_PROTECT( two_value_locals( check, errlog ) );
 	MXS_EVAL( vl.check );
 
@@ -285,8 +277,6 @@ MXSValueWrapper_length( PyObject* self )		{
 // __getitem__
 static PyObject*
 MXSValueWrapper_objitem( PyObject* self, PyObject* key ) {
-	MXS_GC_PROTECT( NULL );
-
 	MXS_PROTECT( three_value_locals( check, maxIndex, errlog ) );
 	MXS_EVAL( vl.check );
 
@@ -330,8 +320,6 @@ MXSValueWrapper_item( PyObject* self, int index ) { return MXSValueWrapper_objit
 // __setitem__
 static int
 MXSValueWrapper_setobjitem( PyObject* self, PyObject* key, PyObject* value ) {
-	MXS_GC_PROTECT( -1 );
-
 	MXS_PROTECT( three_value_locals(check,keyValue,errlog) );
 	MXS_EVAL(vl.check);
 
@@ -399,8 +387,6 @@ static PyMappingMethods proxy_as_mapping = {
 // __add__
 static PyObject*
 MXSValueWrapper_add( PyObject* self, PyObject* other ) {
-	MXS_GC_PROTECT( NULL );
-
 	MXS_PROTECT( three_value_locals( vSelf, vOther, errlog ) );
 	vl.vSelf		= ObjectValueWrapper::intern( self );
 	vl.vOther		= ObjectValueWrapper::intern( other );
@@ -417,8 +403,6 @@ MXSValueWrapper_add( PyObject* self, PyObject* other ) {
 // __sub__
 static PyObject*
 MXSValueWrapper_subtract( PyObject* self, PyObject* other ) {
-	MXS_GC_PROTECT( NULL );
-
 	MXS_PROTECT( three_value_locals( vSelf, vOther, errlog ) );
 	vl.vSelf		= ObjectValueWrapper::intern( self );
 	vl.vOther		= ObjectValueWrapper::intern( other );
@@ -435,8 +419,6 @@ MXSValueWrapper_subtract( PyObject* self, PyObject* other ) {
 // __div__
 static PyObject*
 MXSValueWrapper_divide( PyObject* self, PyObject* other ) {
-	MXS_GC_PROTECT( NULL );
-
 	MXS_PROTECT( three_value_locals( vSelf, vOther, errlog ) );
 	vl.vSelf		= ObjectValueWrapper::intern( self );
 	vl.vOther		= ObjectValueWrapper::intern( other );
@@ -453,8 +435,6 @@ MXSValueWrapper_divide( PyObject* self, PyObject* other ) {
 // __mul__
 static PyObject*
 MXSValueWrapper_multiply( PyObject* self, PyObject* other ) {
-	MXS_GC_PROTECT( NULL );
-
 	MXS_PROTECT( three_value_locals( vSelf, vOther, errlog ) );
 	vl.vSelf		= ObjectValueWrapper::intern( self );
 	vl.vOther		= ObjectValueWrapper::intern( other );
@@ -471,8 +451,6 @@ MXSValueWrapper_multiply( PyObject* self, PyObject* other ) {
 // __pow__
 static PyObject*
 MXSValueWrapper_power( PyObject* self, PyObject* other, PyObject* args ) {
-	MXS_GC_PROTECT( NULL );
-
 	MXS_PROTECT( three_value_locals( vSelf, vOther, errlog ) );
 	vl.vSelf		= ObjectValueWrapper::intern( self );
 	vl.vOther		= ObjectValueWrapper::intern( other );
@@ -489,8 +467,6 @@ MXSValueWrapper_power( PyObject* self, PyObject* other, PyObject* args ) {
 // __abs__
 static PyObject*
 MXSValueWrapper_absolute( PyObject* self ) {
-	MXS_GC_PROTECT( NULL );
-
 	MXS_PROTECT( two_value_locals( vSelf, errlog ) );
 	vl.vSelf		= ObjectValueWrapper::intern( self );
 	PyObject* output = NULL;
@@ -503,8 +479,6 @@ MXSValueWrapper_absolute( PyObject* self ) {
 // __int__
 static PyObject*
 MXSValueWrapper_int( PyObject* self ) {
-	MXS_GC_PROTECT( NULL );
-
 	MXS_PROTECT( two_value_locals( vSelf, errlog ) );
 	vl.vSelf = ObjectValueWrapper::intern( self );
 	PyObject* output = NULL;
@@ -517,8 +491,6 @@ MXSValueWrapper_int( PyObject* self ) {
 // __float__
 static PyObject*
 MXSValueWrapper_float( PyObject* self ) {
-	MXS_GC_PROTECT( NULL );
-
 	MXS_PROTECT( two_value_locals( vSelf, errlog ) );
 	vl.vSelf = ObjectValueWrapper::intern( self );
 	PyObject* output = NULL;
@@ -625,18 +597,31 @@ Value* ProtectorClass::apply( Value** arglist, int count, CallContext* cc ) {
 }
 Protector::Protector()	{}
 Protector::~Protector() {}
-void Protector::collect() {
-	ObjectValueWrapper::gc_protect();
-}
+
+#include <list>
 
 static std::list<Value*> * protectedValueList = 0;
 
-void Protector::trace_gc()
+void Protector::gc_trace()
 {
+	Value::gc_trace();
+
 	if( protectedValueList ) {
 		for( std::list<Value*>::iterator it = protectedValueList->begin(); it != protectedValueList->end(); ++it )
-			(*it)->trace_gc();
+			(*it)->gc_trace();
 	}
+}
+
+Value* Protector::get_property( Value** arg_list, int count ) {
+	Value* key = arg_list[0];
+
+	if ( key == n_count ) {
+		if ( protectedValueList )
+			return Integer::intern( protectedValueList->size() );
+		return Integer::intern(0);
+	}
+
+	return Value::get_property( arg_list, count );
 }
 
 //static
@@ -648,7 +633,7 @@ void Protector::addProtectedValue( Value * value )
 }
 
 //static
-void Protector::removeProtectedValue( PyObject * value )
+void Protector::removeProtectedValue( Value * value )
 {
 	if( protectedValueList )
 		protectedValueList->remove( value );
@@ -675,13 +660,6 @@ PyObject*	ObjectValueWrapper::args(				Value** arg_list, int count ) {
 	out = PyTuple_New( count );
 	for ( int i = 0; i < count; i++ ) PyTuple_SetItem( out, i, ObjectValueWrapper::pyintern( arg_list[i]->eval() ) );
 	return out;
-}
-void		ObjectValueWrapper::gc_protect() {
-	Py_ssize_t count = PyMapping_Length( ObjectValueWrapper::cache );
-	for ( Py_ssize_t i = 0; i < count; i++ ) {
-		MXSValueWrapper* wrapper = (MXSValueWrapper*) PyList_GetItem( ObjectValueWrapper::cache, i );
-		wrapper->value->gc_trace();
-	}
 }
 Value*		ObjectValueWrapper::get_property(		Value** arg_list, int count ) {
 	Value* key = arg_list[0]->eval();
@@ -804,7 +782,7 @@ PyObject*	ObjectValueWrapper::pyintern( Value* item, bool make_static )		{
 		if		( is_pyobject( eval_item ) )						{ ((ObjectValueWrapper*) eval_item)->pyobject(); }
 		else if	( is_string( eval_item ) )							{ return PyString_FromString( eval_item->to_string() ); }
 		else if ( is_integer( eval_item ) )							{ return PyInt_FromLong( eval_item->to_int() ); }
-		else if ( is_float( eval_item ) )							{ return PyFloat_FromDouble( eval_item->to_float() ); }
+		else if ( is_number( eval_item ) )							{ return PyFloat_FromDouble( eval_item->to_float() ); }
 		else if ( is_objectset( eval_item ) || is_array( eval_item ) )	{
 			// Grab the collection's count
 			int count = eval_item->_get_property( Name::intern( "count" ) )->to_int();
@@ -836,11 +814,8 @@ PyObject*	ObjectValueWrapper::pyintern( Value* item, bool make_static )		{
 			// protect the memory
 			Protector::addProtectedValue( eval_item );
 			wrapper->value->gc_trace();
-			Py_INCREF(wrapper);
 
-			// store the item in the cache
-			PyList_Append( ObjectValueWrapper::cache, (PyObject*) wrapper );
-
+			//Py_INCREF(wrapper);
 			return (PyObject*) wrapper;
 		}
 	}
@@ -861,6 +836,3 @@ char*		ObjectValueWrapper::to_string()					{
 	}
 	return "<<python: error printing value>>";
 }
-
-// Initialize the cache
-PyObject*	ObjectValueWrapper::cache		= PyList_New(0);

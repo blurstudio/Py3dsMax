@@ -53,8 +53,9 @@ public:
 			~Protector();
 
 	classof_methods( Protector, Value );
-	void	collect();
-	void	trace_gc();
+	void	collect() { gc_trace(); }  // This item should never be deleted
+	void	gc_trace();
+	Value*	get_property( Value** arg_list, int count );
 
 	static void addProtectedValue( Value * );
 	static void removeProtectedValue( Value * );
