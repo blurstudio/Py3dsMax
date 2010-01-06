@@ -651,7 +651,7 @@ void Protector::addProtectedValue( Value * value )
 void Protector::removeProtectedValue( PyObject * value )
 {
 	if( protectedValueList )
-		protectedValueList.remove( value );
+		protectedValueList->remove( value );
 }
 
 visible_class_instance( ObjectValueWrapper, "PyObject" );
