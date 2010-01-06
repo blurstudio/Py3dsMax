@@ -54,6 +54,10 @@ public:
 
 	classof_methods( Protector, Value );
 	void	collect();
+	void	trace_gc();
+
+	static void addProtectedValue( Value * );
+	static void removeProtectedValue( Value * );
 };
 
 visible_class( ObjectValueWrapper );

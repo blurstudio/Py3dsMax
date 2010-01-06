@@ -148,6 +148,7 @@ MXSValueWrapper_dealloc( MXSValueWrapper* self ) {
 	// remove from the cache
 	PyMapping_DelItem( ObjectValueWrapper::cache, (PyObject*) self );
 	self->ob_type->tp_free((PyObject *)self);
+	Protector::removeProtectedValue( self->value );
 	self->value = NULL;
 }
 
@@ -628,6 +629,31 @@ void Protector::collect() {
 	ObjectValueWrapper::gc_protect();
 }
 
+static std::list<Value*> * protectedValueList = 0;
+
+void Protector::trace_gc()
+{
+	if( protectedValueList ) {
+		for( std::list<Value*>::iterator it = protectedValueList->begin(); it != protectedValueList->end(); ++it )
+			(*it)->trace_gc();
+	}
+}
+
+//static
+void Protector::addProtectedValue( Value * value )
+{
+	if( !protectedValueList )
+		protectedValueList = new std::list<Value*>();
+	protectedValueList->push_back( value );
+}
+
+//static
+void Protector::removeProtectedValue( PyObject * value )
+{
+	if( protectedValueList )
+		protectedValueList.remove( value );
+}
+
 visible_class_instance( ObjectValueWrapper, "PyObject" );
 ObjectValueWrapper::ObjectValueWrapper( PyObject* pyobj ) { 
 	this->tag		= class_tag(ObjectValueWrapper);
@@ -807,8 +833,8 @@ PyObject*	ObjectValueWrapper::pyintern( Value* item, bool make_static )		{
 		else {
 			MXSValueWrapper* wrapper	= (MXSValueWrapper*) MXSValueWrapper_new( &MXSValueWrapperType, NULL, NULL );
 			wrapper->value				= eval_item;
-
 			// protect the memory
+			Protector::addProtectedValue( eval_item );
 			wrapper->value->gc_trace();
 			Py_INCREF(wrapper);
 
