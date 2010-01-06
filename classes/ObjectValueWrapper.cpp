@@ -12,6 +12,7 @@
 // BlurPython Includes
 #include "max\include\exports.h"
 #include "ObjectValueWrapper.h"
+#include "maxscrpt.h"
 
 // Use if compiling for Python24 mappings, comment out for Python25+
 //typedef inquiry			lenfunc;
@@ -144,6 +145,8 @@ MXSValueWrapper_compare( PyObject* self, PyObject* other ) {
 
 static void
 MXSValueWrapper_dealloc( MXSValueWrapper* self ) {
+	// remove from the cache
+	PyMapping_DelItem( ObjectValueWrapper::cache, (PyObject*) self );
 	self->ob_type->tp_free((PyObject *)self);
 	self->value = NULL;
 }
@@ -613,6 +616,18 @@ static PyTypeObject MXSValueWrapperType = {
 
 //------------------------------------------------------------------------------------------------------------------
 
+visible_class_instance( Protector, "PyMemProtector" );
+Value* ProtectorClass::apply( Value** arglist, int count, CallContext* cc ) {
+	one_value_local( result );
+	vl.result = new Protector();
+	return_value(vl.result);
+}
+Protector::Protector()	{}
+Protector::~Protector() {}
+void Protector::collect() {
+	ObjectValueWrapper::gc_protect();
+}
+
 visible_class_instance( ObjectValueWrapper, "PyObject" );
 ObjectValueWrapper::ObjectValueWrapper( PyObject* pyobj ) { 
 	this->tag		= class_tag(ObjectValueWrapper);
@@ -634,6 +649,13 @@ PyObject*	ObjectValueWrapper::args(				Value** arg_list, int count ) {
 	out = PyTuple_New( count );
 	for ( int i = 0; i < count; i++ ) PyTuple_SetItem( out, i, ObjectValueWrapper::pyintern( arg_list[i]->eval() ) );
 	return out;
+}
+void		ObjectValueWrapper::gc_protect() {
+	Py_ssize_t count = PyMapping_Length( ObjectValueWrapper::cache );
+	for ( Py_ssize_t i = 0; i < count; i++ ) {
+		MXSValueWrapper* wrapper = (MXSValueWrapper*) PyList_GetItem( ObjectValueWrapper::cache, i );
+		wrapper->value->gc_trace();
+	}
 }
 Value*		ObjectValueWrapper::get_property(		Value** arg_list, int count ) {
 	Value* key = arg_list[0]->eval();
@@ -761,7 +783,7 @@ PyObject*	ObjectValueWrapper::pyintern( Value* item, bool make_static )		{
 			// Grab the collection's count
 			int count = eval_item->_get_property( Name::intern( "count" ) )->to_int();
 			PyObject* output = PyList_New(10);
-			Value* index;
+			//Value* index;
 
 			/*for ( int i = 0; i < count; i++ ) {
 				index = Integer::intern(i);
@@ -784,10 +806,14 @@ PyObject*	ObjectValueWrapper::pyintern( Value* item, bool make_static )		{
 		}
 		else {
 			MXSValueWrapper* wrapper	= (MXSValueWrapper*) MXSValueWrapper_new( &MXSValueWrapperType, NULL, NULL );
-			wrapper->value				= eval_item->make_heap_static();
+			wrapper->value				= eval_item;
 
 			// protect the memory
+			wrapper->value->gc_trace();
 			Py_INCREF(wrapper);
+
+			// store the item in the cache
+			PyList_Append( ObjectValueWrapper::cache, (PyObject*) wrapper );
 
 			return (PyObject*) wrapper;
 		}
@@ -809,3 +835,6 @@ char*		ObjectValueWrapper::to_string()					{
 	}
 	return "<<python: error printing value>>";
 }
+
+// Initialize the cache
+PyObject*	ObjectValueWrapper::cache		= PyList_New(0);

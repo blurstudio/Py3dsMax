@@ -44,10 +44,23 @@
 																PyErr_SetString( PyExc_Exception, "MAXScript error occurred" ); \
 															}
 
+class ObjectValueWrapper;
+
+applyable_class( Protector );
+class Protector : public Value {
+public:
+			Protector();
+			~Protector();
+
+	classof_methods( Protector, Value );
+	void	collect();
+};
+
 visible_class( ObjectValueWrapper );
 class ObjectValueWrapper : public Value {
 	private:
 		PyObject*			_pyobj;
+		static Value*		_protector;
 
 	public:
 							ObjectValueWrapper( PyObject* pyobj );
@@ -61,7 +74,9 @@ class ObjectValueWrapper : public Value {
 		// Methods
 		Value*				apply(			Value** arg_list, int count, CallContext* cc = NULL );
 		static PyObject*	args(			Value** arg_list, int count );
+		static PyObject*	cache;
 		void				collect()		{ delete this; }
+		static void			gc_protect();
 		Value*				get_property(	Value** arg_list, int count );
 		Value*				lookup(			std::string key );
 		static Value*		intern(			PyObject* item );
