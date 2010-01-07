@@ -316,7 +316,7 @@ MXSValueWrapper_objitem( PyObject* self, PyObject* key ) {
 	MXS_PROTECT( three_value_locals( check, index, result ) );
 	MXS_EVAL( vl.check );
 
-	PyObject* output;
+	PyObject* output = NULL;
 
 	// resolve maxscript being 1 based & python being 0 based
 	if ( key->ob_type == &PyInt_Type )
@@ -336,7 +336,12 @@ MXSValueWrapper_objitem( PyObject* self, PyObject* key ) {
 	return output;
 }
 static PyObject*
-MXSValueWrapper_item( PyObject* self, int index ) { return MXSValueWrapper_objitem( self, PyInt_FromLong( index ) ); }
+MXSValueWrapper_item( PyObject* self, int index ) { 
+	PyObject* objindex	= PyInt_FromLong( index );
+	PyObject* result	= MXSValueWrapper_objitem( self, objindex );
+	Py_DECREF( objindex );
+	return result;
+}
 
 // __setitem__
 static int
@@ -368,7 +373,12 @@ MXSValueWrapper_setobjitem( PyObject* self, PyObject* key, PyObject* value ) {
 }
 
 static int
-MXSValueWrapper_setitem( PyObject* self, int index, PyObject* value ) { return MXSValueWrapper_setobjitem( self, PyInt_FromLong( index ), value ); }
+MXSValueWrapper_setitem( PyObject* self, int index, PyObject* value ) { 
+	PyObject* objindex	= PyInt_FromLong( index );
+	int result			= MXSValueWrapper_setobjitem( self, objindex, value );
+	Py_DECREF( objindex );
+	return result;
+}
 
 static PySequenceMethods proxy_as_sequence = {
 	(lenfunc) MXSValueWrapper_length,			// sq_length
