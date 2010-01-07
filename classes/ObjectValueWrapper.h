@@ -18,14 +18,6 @@
 #define		MXS_CLEANUP()									pop_value_locals(); \
 															pop_alloc_frame();
 
-#define		MXS_GC_PROTECT( RETURN )						if ( ((MXSValueWrapper*) self)->value ) { \
-																((MXSValueWrapper*) self)->value->gc_trace(); \
-															} \
-															else { \
-																PyErr_SetString( PyExc_Exception, "Attempting to access Maxscript wrapper value that has been collected by MAXScript garbage collection." ); \
-																return RETURN; \
-															}
-
 #define		MXS_EVAL(VARIABLE)								VARIABLE = ((MXSValueWrapper*) self)->value; \
 															while ( VARIABLE != NULL && is_thunk( VARIABLE ) ) \
 																VARIABLE = VARIABLE->eval();
@@ -57,8 +49,8 @@ public:
 	void	gc_trace();
 	Value*	get_property( Value** arg_list, int count );
 
-	static void addProtectedValue( Value * );
-	static void removeProtectedValue( Value * );
+	static void addProtectedValue( PyObject * );
+	static void removeProtectedValue( PyObject * );
 };
 
 visible_class( ObjectValueWrapper );
@@ -88,7 +80,7 @@ class ObjectValueWrapper : public Value {
 		static bool			init();
 		static bool			isWrapper(		PyObject* item );
 		static void			logError(		MAXScriptException err );
-		static PyObject*	pyintern(		Value* item, bool make_static = true );
+		static PyObject*	pyintern(		Value* item );
 		PyObject*			pyobject();
 		void				sprin1(			CharStream* s );
 		char*				to_string();

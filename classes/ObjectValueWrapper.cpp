@@ -25,14 +25,17 @@
 typedef struct {
 	PyObject_HEAD
 	Value* value;
+	PyObject* topLevel;
+	char* memberName;
 } MXSValueWrapper;
 
 static PyObject *
 MXSValueWrapper_new( PyTypeObject *type, PyObject *args, PyObject *kwds ) {
-	mprintf( "allocating new memory\n" );
 	MXSValueWrapper* self;
 	self = (MXSValueWrapper *)type->tp_alloc(type, 0);
-	self->value = NULL;
+	self->value			= NULL;
+	self->topLevel		= NULL;
+	self->memberName	= "";
 	return (PyObject *)self;
 }
 
@@ -143,12 +146,11 @@ MXSValueWrapper_compare( PyObject* self, PyObject* other ) {
 
 static void
 MXSValueWrapper_dealloc( MXSValueWrapper* self ) {
-	mprintf( "deallocating memory\n" );
+	// remove the protected object
+	Protector::removeProtectedValue( (PyObject*) self );
 
-	// Remove the maxscript protected value
-	Protector::removeProtectedValue( self->value );
+	// clear the value pointer
 	self->value = NULL;
-
 	self->ob_type->tp_free((PyObject *)self);
 }
 
@@ -157,22 +159,45 @@ static PyObject*
 MXSValueWrapper_getattr( MXSValueWrapper* self, char* key ) {
 	MXS_PROTECT( four_value_locals( result, keyName, check, errlog ) );
 
-	vl.keyName	= Name::intern(key);
-	vl.check	= self->value;
-	
-	while ( vl.check != NULL && is_thunk(vl.check) )
-		vl.check = vl.check->eval();
-	
-	// Map generic items
-	if ( vl.check ) {
-		try	{ vl.result = vl.check->_get_property( vl.keyName ); }
-		CATCH_ERRORS();
+	MXSValueWrapper* curr	= self;
+	std::string keystr		= std::string( key );
+
+	// extract property using nested parameters
+	while ( curr && !vl.result ) {
+		vl.keyName	= Name::intern(keystr.c_str());
+		vl.check	= curr->value;
+
+		while ( vl.check != NULL && is_thunk(vl.check) )
+			vl.check = vl.check->eval();
+		
+		// Map generic items
+		if ( vl.check ) {
+			try	{ vl.result = vl.check->_get_property( vl.keyName ); }
+			CATCH_ERRORS();
+		}
+
+		// ignore undefined items while using top level items
+		if ( curr->topLevel && vl.result == &undefined )
+			vl.result = NULL;
+
+		// update the keystring
+		keystr.insert( 0, "." );
+		keystr.insert( 0, curr->memberName );
+		curr = (MXSValueWrapper*) curr->topLevel;
 	}
 
+	// convert the result into a python variable
 	PyObject* output = NULL;
-
 	if ( !vl.result )	{ PyErr_SetString( PyExc_AttributeError, key ); }
-	else				{ output = ObjectValueWrapper::pyintern( vl.result ); }
+	else				{ 
+		output = ObjectValueWrapper::pyintern( vl.result ); 
+
+		// record nesting of parameters
+		if ( ObjectValueWrapper::isWrapper( output ) ) {
+			((MXSValueWrapper*) output)->topLevel	= (PyObject*) self;
+			((MXSValueWrapper*) output)->memberName = key;
+		}
+	}
 
 	MXS_CLEANUP();
 
@@ -185,31 +210,51 @@ MXSValueWrapper_setattr( MXSValueWrapper* self, char* key, PyObject* value ) {
 	MXS_PROTECT( five_value_locals( result, check, keyName, maxValue, errlog ) );
 
 	// Convert the value to an evaluated version of the thunk
-	MXS_EVAL( vl.check );
-	vl.keyName	= Name::intern(key);
-	vl.maxValue	= ObjectValueWrapper::intern( value );
-	
-	try {
-		// Set Controllers
-		if ( vl.keyName == Name::intern( "controller" ) && is_subAnim( vl.check ) ) {
-			((MAXSubAnim*) vl.check)->set_max_controller( (MAXControl*) vl.maxValue );
+	MXSValueWrapper* curr = self;
+	std::string keystr		= std::string( key );
+
+	vl.maxValue				= ObjectValueWrapper::intern( value );
+
+	int result = NULL;
+	while ( curr && !vl.result ) {
+		vl.keyName	= Name::intern(keystr.c_str());
+		vl.check	= curr->value;
+
+		while ( vl.check != NULL && is_thunk(vl.check) )
+			vl.check = vl.check->eval();
+		
+		// Map generic items
+		if ( vl.check ) {
+			try	{ vl.result = vl.check->_get_property( vl.keyName ); }
+			CATCH_ERRORS();
 		}
-		else {
-			vl.result = vl.check->_set_property( vl.keyName, vl.maxValue );
+
+		// ignore undefined items while using top level items
+		if ( curr->topLevel && vl.result == &undefined ) {
+			vl.result = NULL;
 		}
+		else if ( vl.result ) {
+
+			try { vl.check->_set_property( vl.keyName, vl.maxValue ); }
+			CATCH_ERRORS();
+			
+			result = 0;
+			break;
+		}
+
+		// update the keystring
+		keystr.insert( 0, "." );
+		keystr.insert( 0, curr->memberName );
+		curr = (MXSValueWrapper*) curr->topLevel;
 	}
-	CATCH_ERRORS();
 
-	int output = 0;
-
-	if ( vl.result == NULL ) {
-		PyErr_SetString( PyExc_AttributeError, key );
-		output = NULL;
+	if ( result == NULL ) {
+		PyErr_SetString( PyExc_AttributeError, keystr.c_str() );
 	}
 
 	MXS_CLEANUP();
 
-	return output;
+	return result;
 }
 
 // __str__
@@ -255,19 +300,10 @@ MXSValueWrapper_length( PyObject* self )		{
 	MXS_EVAL( vl.check );
 
 	int output = -1;
-
-	try {
-		// Calculate Array size
-		if ( is_array( vl.check ) )	{ output = (int) ((Array*) vl.check)->size; }
-
-		// Calculate Collection size
-		else { output = vl.check->_get_property( Name::intern( "count" ) )->to_int(); }
-	}
+	try { output = vl.check->_get_property( n_count )->to_int(); }
 	CATCH_ERRORS();
 	
-	if ( output == -1 ) {
-		PyErr_SetString( PyExc_TypeError, TSTR( "MXSValueWrapper_item: Cannot convert to <list>: " ) + PyString_AsString( MXSValueWrapper_str( (MXSValueWrapper*) self )) );
-	}
+	if ( output == -1 ) { PyErr_SetString( PyExc_TypeError, "__len__ error: cannot access length method for maxscript object" );  }
 
 	MXS_CLEANUP();
 
@@ -277,38 +313,23 @@ MXSValueWrapper_length( PyObject* self )		{
 // __getitem__
 static PyObject*
 MXSValueWrapper_objitem( PyObject* self, PyObject* key ) {
-	MXS_PROTECT( three_value_locals( check, maxIndex, errlog ) );
+	MXS_PROTECT( three_value_locals( check, index, result ) );
 	MXS_EVAL( vl.check );
 
 	PyObject* output;
 
-	if ( is_collection(vl.check) ) {
-		try {
-			// Grab an item by index
-			if ( key->ob_type == &PyInt_Type ) {
-				// Grab the collection's count
-				int count;
-				int index = (int) PyInt_AsLong( key );
-				
-				count = vl.check->_get_property( Name::intern( "count" ) )->to_int();
+	// resolve maxscript being 1 based & python being 0 based
+	if ( key->ob_type == &PyInt_Type )
+		vl.index = Integer::intern( PyInt_AsLong(key) + 1 );
+	else
+		vl.index = ObjectValueWrapper::intern( key );
 
-				if ( 0 <= index && index < count ) {
-					vl.maxIndex		= Integer::intern( index + 1 );
-					output			= ObjectValueWrapper::pyintern( vl.check->get_vf( &vl.maxIndex, 1 ) );
-				}
-				else {
-					PyErr_SetString( PyExc_IndexError, TSTR( "__getitem__ error: index is out of range" ) );
-				}
-			}
+	// pull out the value from the sequence
+	try { vl.result	= vl.check->get_vf( &vl.index, 1 ); }
+	CATCH_ERRORS();
 
-			// Grab an item by some other mapping
-			else {
-				vl.maxIndex = ObjectValueWrapper::intern( key );
-				output		= ObjectValueWrapper::pyintern( vl.check->get_vf( &vl.maxIndex, 1 ) );
-			}
-		}
-		CATCH_ERRORS();
-	}
+	if ( vl.result ) { output = ObjectValueWrapper::pyintern( vl.result ); }
+	else { PyErr_SetString( PyExc_IndexError, "__getitem__ error: could not get value for max object" ); }
 
 	MXS_CLEANUP();
 
@@ -320,40 +341,27 @@ MXSValueWrapper_item( PyObject* self, int index ) { return MXSValueWrapper_objit
 // __setitem__
 static int
 MXSValueWrapper_setobjitem( PyObject* self, PyObject* key, PyObject* value ) {
-	MXS_PROTECT( three_value_locals(check,keyValue,errlog) );
+	MXS_PROTECT( one_value_local(check) );
 	MXS_EVAL(vl.check);
 
-	if ( is_collection(vl.check) ) {
+	// Build the arguments
+	Value** arg_list;
+	value_local_array( arg_list, 2 );
 
-		vl.keyValue;
+	// resolve maxscript being 1 based & python being 0 based
+	if ( key->ob_type == &PyInt_Type )
+		arg_list[0] = Integer::intern( PyInt_AsLong(key) + 1 );
+	else
+		arg_list[0] = ObjectValueWrapper::intern( key );
 
-		// Convert to index
-		if ( key->ob_type == &PyInt_Type ) {
-			int index		= (int) PyInt_AsLong( key );
-			int count		= MXSValueWrapper_length( self );
-			if ( 0 <= index && index < count )
-				vl.keyValue	= Integer::intern( index );
-			else {
-				PyErr_SetString( PyExc_IndexError, "__setitem__ error: index is out of range" );
-				return -1;
-			}
-		}
-		// Keep as key
-		else vl.keyValue	= ObjectValueWrapper::intern( key );
+	// Set the arguments
+	arg_list[1]		= ObjectValueWrapper::intern( value );
 
-		// Build the arguments
-		Value** arg_list;
-		value_local_array( arg_list, 2 );
+	try { vl.check->put_vf( arg_list, 2 ); }
+	CATCH_ERRORS();
+	
+	pop_value_local_array( arg_list );
 
-		// Set the arguments
-		arg_list[0]		= vl.keyValue;
-		arg_list[1]		= ObjectValueWrapper::intern( value );
-
-		try { vl.check->put_vf( arg_list, 2 ); }
-		CATCH_ERRORS();
-		
-		pop_value_local_array( arg_list );
-	}
 	MXS_CLEANUP();
 	
 	return 0;
@@ -589,26 +597,26 @@ static PyTypeObject MXSValueWrapperType = {
 
 //------------------------------------------------------------------------------------------------------------------
 
+#include <list>
+static std::list<PyObject*> * protectedValueList = 0;
+
 visible_class_instance( Protector, "PyMemProtector" );
 Value* ProtectorClass::apply( Value** arglist, int count, CallContext* cc ) {
 	one_value_local( result );
 	vl.result = new Protector();
 	return_value(vl.result);
 }
+
 Protector::Protector()	{}
 Protector::~Protector() {}
-
-#include <list>
-
-static std::list<Value*> * protectedValueList = 0;
 
 void Protector::gc_trace()
 {
 	Value::gc_trace();
 
 	if( protectedValueList ) {
-		for( std::list<Value*>::iterator it = protectedValueList->begin(); it != protectedValueList->end(); ++it )
-			(*it)->gc_trace();
+		for( std::list<PyObject*>::iterator it = protectedValueList->begin(); it != protectedValueList->end(); ++it )
+			((MXSValueWrapper*) (*it))->value->gc_trace();
 	}
 }
 
@@ -625,18 +633,18 @@ Value* Protector::get_property( Value** arg_list, int count ) {
 }
 
 //static
-void Protector::addProtectedValue( Value * value )
+void Protector::addProtectedValue( PyObject * object )
 {
 	if( !protectedValueList )
-		protectedValueList = new std::list<Value*>();
-	protectedValueList->push_back( value );
+		protectedValueList = new std::list<PyObject*>();
+	protectedValueList->push_back( object );
 }
 
 //static
-void Protector::removeProtectedValue( Value * value )
+void Protector::removeProtectedValue( PyObject * object )
 {
 	if( protectedValueList )
-		protectedValueList->remove( value );
+		protectedValueList->remove( object );
 }
 
 visible_class_instance( ObjectValueWrapper, "PyObject" );
@@ -773,7 +781,7 @@ void		ObjectValueWrapper::logError( MAXScriptException err ) {
 	PyErr_SetString( PyExc_Exception, vl.errlog->to_string() );
 	pop_value_locals();
 }
-PyObject*	ObjectValueWrapper::pyintern( Value* item, bool make_static )		{
+PyObject*	ObjectValueWrapper::pyintern( Value* item )		{
 	//-------------------------------------------------------------
 
 	if			( item ) {
@@ -785,14 +793,14 @@ PyObject*	ObjectValueWrapper::pyintern( Value* item, bool make_static )		{
 		else if ( is_number( eval_item ) )							{ return PyFloat_FromDouble( eval_item->to_float() ); }
 		else if ( is_objectset( eval_item ) || is_array( eval_item ) )	{
 			// Grab the collection's count
-			int count = eval_item->_get_property( Name::intern( "count" ) )->to_int();
-			PyObject* output = PyList_New(10);
-			//Value* index;
+			int count			= eval_item->_get_property( n_count )->to_int();
+			PyObject* output	= PyList_New(count);
+			Value* index;
 
-			/*for ( int i = 0; i < count; i++ ) {
-				index = Integer::intern(i);
-				PyList_Seteval_item( output, i, ObjectValueWrapper::pyintern( eval_item->get_vf( &index, 1 ) ) );
-			}*/
+			for ( int i = 0; i < count; i++ ) {
+				index = Integer::intern(i+1);
+				PyList_SetItem( output, i, ObjectValueWrapper::pyintern( eval_item->get_vf( &index, 1 ) ) );
+			}
 			
 			return output;
 		}
@@ -810,12 +818,12 @@ PyObject*	ObjectValueWrapper::pyintern( Value* item, bool make_static )		{
 		}
 		else {
 			MXSValueWrapper* wrapper	= (MXSValueWrapper*) MXSValueWrapper_new( &MXSValueWrapperType, NULL, NULL );
-			wrapper->value				= eval_item;
-			// protect the memory
-			Protector::addProtectedValue( eval_item );
-			wrapper->value->gc_trace();
 
-			//Py_INCREF(wrapper);
+			// Store the value and protect it
+			wrapper->value				= eval_item;
+			wrapper->value->gc_trace();
+			Protector::addProtectedValue( (PyObject*) wrapper );
+
 			return (PyObject*) wrapper;
 		}
 	}
