@@ -68,8 +68,12 @@ MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 				value_local_array(arg_list,mxs_count);
 
 				// Add arguments
-				for ( int i = 0; i < arg_count; i++ )
-					arg_list[i] = ObjectValueWrapper::intern( PyTuple_GetItem( args, i ) );
+				PyObject* item = NULL;
+				for ( int i = 0; i < arg_count; i++ ) {
+					item = PyTuple_GetItem( args, i );
+					arg_list[i] = ObjectValueWrapper::intern( item );
+					Py_DECREF( item );
+				}
 
 				// Add keywords
 				if ( keyword_count != -1 ) {
@@ -83,6 +87,9 @@ MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 						arg_list[ arg_count + 1 + (key_pos*2) ] = Name::intern( PyString_AsString( key ) );
 						arg_list[ arg_count + 2 + (key_pos*2) ] = ObjectValueWrapper::intern( py_value );
 						key_pos++;
+
+						Py_DECREF( key );
+						Py_DECREF( py_value );
 					}
 				}
 
@@ -146,11 +153,16 @@ MXSValueWrapper_compare( PyObject* self, PyObject* other ) {
 
 static void
 MXSValueWrapper_dealloc( MXSValueWrapper* self ) {
+	// decref the top level pointer if it exists
+	if ( self->topLevel )
+		Py_DECREF( self->topLevel );
+
 	// remove the protected object
 	Protector::removeProtectedValue( (PyObject*) self );
 
 	// clear the value pointer
-	self->value = NULL;
+	self->topLevel	= NULL;
+	self->value		= NULL;
 	self->ob_type->tp_free((PyObject *)self);
 }
 
@@ -194,6 +206,7 @@ MXSValueWrapper_getattr( MXSValueWrapper* self, char* key ) {
 
 		// record nesting of parameters
 		if ( ObjectValueWrapper::isWrapper( output ) ) {
+			Py_INCREF( self );
 			((MXSValueWrapper*) output)->topLevel	= (PyObject*) self;
 			((MXSValueWrapper*) output)->memberName = key;
 		}
@@ -299,11 +312,42 @@ MXSValueWrapper_length( PyObject* self )		{
 	MXS_PROTECT( two_value_locals( check, errlog ) );
 	MXS_EVAL( vl.check );
 
-	int output = -1;
-	try { output = vl.check->_get_property( n_count )->to_int(); }
+	int count = NULL;
+
+	try { count = vl.check->_get_property( n_count )->to_int(); }
 	CATCH_ERRORS();
-	
-	if ( output == -1 ) { PyErr_SetString( PyExc_TypeError, "__len__ error: cannot access length method for maxscript object" );  }
+
+	MXS_CLEANUP();
+
+	return count;
+}
+
+// __getitem__
+static PyObject*
+MXSValueWrapper_item( PyObject* self, int index ) { 
+	MXS_PROTECT( three_value_locals( check, index, result ) );
+	MXS_EVAL( vl.check );
+
+	PyObject* output = NULL;
+
+	// resolve maxscript being 1 based & python being 0 based
+	int count = 0;
+	try { 
+		count = vl.check->_get_property( n_count )->to_int();
+
+		// allow reverse lookups
+		if ( index < 0 )
+			index += count;
+
+		if ( 0 <= index && index < count ) {
+			vl.index	= Integer::intern( index + 1 );
+			vl.result	= vl.check->get_vf( &vl.index, 1 );
+		}
+	}
+	CATCH_ERRORS();
+
+	if ( vl.result ) { output = ObjectValueWrapper::pyintern( vl.result ); }
+	else { PyErr_SetString( PyExc_IndexError, "__getitem__ index is out of range" ); }
 
 	MXS_CLEANUP();
 
@@ -313,72 +357,85 @@ MXSValueWrapper_length( PyObject* self )		{
 // __getitem__
 static PyObject*
 MXSValueWrapper_objitem( PyObject* self, PyObject* key ) {
-	MXS_PROTECT( three_value_locals( check, index, result ) );
-	MXS_EVAL( vl.check );
+	if ( key->ob_type == &PyInt_Type ) {
+		return MXSValueWrapper_item( self, PyInt_AsLong( key ) );
+	}
+	else {
+		MXS_PROTECT( three_value_locals( check, index, result ) );
+		MXS_EVAL( vl.check );
 
-	PyObject* output = NULL;
+		PyObject* output = NULL;
 
-	// resolve maxscript being 1 based & python being 0 based
-	if ( key->ob_type == &PyInt_Type )
-		vl.index = Integer::intern( PyInt_AsLong(key) + 1 );
-	else
 		vl.index = ObjectValueWrapper::intern( key );
 
-	// pull out the value from the sequence
-	try { vl.result	= vl.check->get_vf( &vl.index, 1 ); }
+		// pull out the value from the sequence
+		try { vl.result	= vl.check->get_vf( &vl.index, 1 ); }
+		CATCH_ERRORS();
+
+		if ( vl.result ) { output = ObjectValueWrapper::pyintern( vl.result ); }
+		else { PyErr_SetString( PyExc_IndexError, "__getitem__ could not get a maxscript value" ); }
+
+		MXS_CLEANUP();
+
+		return output;
+	}
+}
+
+// __setitem__
+static int
+MXSValueWrapper_setitem( PyObject* self, int index, PyObject* value ) { 
+	MXS_PROTECT( two_value_locals( check, result ) );
+	MXS_EVAL( vl.check );
+
+	// resolve maxscript being 1 based & python being 0 based
+	Value** arg_list;
+	value_local_array( arg_list, 2 );
+	arg_list[0] = Integer::intern( index + 1 );
+	arg_list[1] = ObjectValueWrapper::intern( value );
+
+	try { vl.result = vl.check->put_vf( arg_list, 2 ); }
 	CATCH_ERRORS();
 
-	if ( vl.result ) { output = ObjectValueWrapper::pyintern( vl.result ); }
-	else { PyErr_SetString( PyExc_IndexError, "__getitem__ error: could not get value for max object" ); }
+	int result = 0;
+	if ( vl.result ) { result = 1; }
+	else { PyErr_SetString( PyExc_IndexError, "__setitem__ index is out of range" ); }
 
+	pop_value_local_array( arg_list );
 	MXS_CLEANUP();
 
-	return output;
-}
-static PyObject*
-MXSValueWrapper_item( PyObject* self, int index ) { 
-	PyObject* objindex	= PyInt_FromLong( index );
-	PyObject* result	= MXSValueWrapper_objitem( self, objindex );
-	Py_DECREF( objindex );
 	return result;
 }
 
 // __setitem__
 static int
-MXSValueWrapper_setobjitem( PyObject* self, PyObject* key, PyObject* value ) {
-	MXS_PROTECT( one_value_local(check) );
-	MXS_EVAL(vl.check);
+MXSValueWrapper_setobjitem( PyObject* self, PyObject* key, PyObject* value ) { 
+	if ( key->ob_type == &PyInt_Type ) {
+		return MXSValueWrapper_setitem( self, PyInt_AsLong( key ), value );
+	}
+	else {
+		MXS_PROTECT( two_value_locals( check, result ) );
+		MXS_EVAL( vl.check );
 
-	// Build the arguments
-	Value** arg_list;
-	value_local_array( arg_list, 2 );
-
-	// resolve maxscript being 1 based & python being 0 based
-	if ( key->ob_type == &PyInt_Type )
-		arg_list[0] = Integer::intern( PyInt_AsLong(key) + 1 );
-	else
+		// resolve maxscript being 1 based & python being 0 based
+		Value** arg_list;
+		value_local_array( arg_list, 2 );
 		arg_list[0] = ObjectValueWrapper::intern( key );
+		arg_list[1] = ObjectValueWrapper::intern( value );
 
-	// Set the arguments
-	arg_list[1]		= ObjectValueWrapper::intern( value );
+		try { vl.result = vl.check->put_vf( arg_list, 2 ); }
+		CATCH_ERRORS();
 
-	try { vl.check->put_vf( arg_list, 2 ); }
-	CATCH_ERRORS();
-	
-	pop_value_local_array( arg_list );
+		int result = 0;
+		if ( vl.result ) { result = 1; }
+		else { PyErr_SetString( PyExc_IndexError, "__setitem__ index is out of range" ); }
 
-	MXS_CLEANUP();
-	
-	return 0;
+		pop_value_local_array( arg_list );
+		MXS_CLEANUP();
+
+		return result;
+	}
 }
 
-static int
-MXSValueWrapper_setitem( PyObject* self, int index, PyObject* value ) { 
-	PyObject* objindex	= PyInt_FromLong( index );
-	int result			= MXSValueWrapper_setobjitem( self, objindex, value );
-	Py_DECREF( objindex );
-	return result;
-}
 
 static PySequenceMethods proxy_as_sequence = {
 	(lenfunc) MXSValueWrapper_length,			// sq_length
@@ -801,7 +858,7 @@ PyObject*	ObjectValueWrapper::pyintern( Value* item )		{
 		else if	( is_string( eval_item ) )							{ return PyString_FromString( eval_item->to_string() ); }
 		else if ( is_integer( eval_item ) )							{ return PyInt_FromLong( eval_item->to_int() ); }
 		else if ( is_number( eval_item ) )							{ return PyFloat_FromDouble( eval_item->to_float() ); }
-		else if ( is_objectset( eval_item ) || is_array( eval_item ) )	{
+		else if ( is_collection( eval_item ) )	{
 			// Grab the collection's count
 			int count			= eval_item->_get_property( n_count )->to_int();
 			PyObject* output	= PyList_New(count);
