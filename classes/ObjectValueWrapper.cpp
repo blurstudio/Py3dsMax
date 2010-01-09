@@ -15,10 +15,10 @@
 #include "maxscrpt.h"
 
 // Use if compiling for Python24 mappings, comment out for Python25+
-//typedef inquiry			lenfunc;
-//typedef int				Py_ssize_t;
-//typedef intobjargproc	ssizeobjargproc;
-//typedef	intargfunc		ssizeargfunc;
+typedef inquiry			lenfunc;
+typedef int				Py_ssize_t;
+typedef intobjargproc	ssizeobjargproc;
+typedef	intargfunc		ssizeargfunc;
 
 //-------------------------------------------------------------------------------------------------------------------------------
 
@@ -68,11 +68,8 @@ MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 				value_local_array(arg_list,mxs_count);
 
 				// Add arguments
-				PyObject* item = NULL;
 				for ( int i = 0; i < arg_count; i++ ) {
-					item = PyTuple_GetItem( args, i );
-					arg_list[i] = ObjectValueWrapper::intern( item );
-					Py_DECREF( item );
+					arg_list[i] = ObjectValueWrapper::intern( PyTuple_GetItem( args, i ) );
 				}
 
 				// Add keywords
@@ -87,9 +84,6 @@ MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 						arg_list[ arg_count + 1 + (key_pos*2) ] = Name::intern( PyString_AsString( key ) );
 						arg_list[ arg_count + 2 + (key_pos*2) ] = ObjectValueWrapper::intern( py_value );
 						key_pos++;
-
-						Py_DECREF( key );
-						Py_DECREF( py_value );
 					}
 				}
 
@@ -176,7 +170,7 @@ MXSValueWrapper_getattr( MXSValueWrapper* self, char* key ) {
 
 	// extract property using nested parameters
 	while ( curr && !vl.result ) {
-		vl.keyName	= Name::intern(keystr.c_str());
+		vl.keyName	= Name::intern( (char*) keystr.c_str());
 		vl.check	= curr->value;
 
 		while ( vl.check != NULL && is_thunk(vl.check) )
@@ -230,7 +224,7 @@ MXSValueWrapper_setattr( MXSValueWrapper* self, char* key, PyObject* value ) {
 
 	int result = NULL;
 	while ( curr && !vl.result ) {
-		vl.keyName	= Name::intern(keystr.c_str());
+		vl.keyName	= Name::intern( (char*) keystr.c_str());
 		vl.check	= curr->value;
 
 		while ( vl.check != NULL && is_thunk(vl.check) )
@@ -718,8 +712,12 @@ visible_class_instance( ObjectValueWrapper, "PyObject" );
 ObjectValueWrapper::ObjectValueWrapper( PyObject* pyobj ) { 
 	this->tag		= class_tag(ObjectValueWrapper);
 	this->_pyobj	= pyobj;
+
+	Py_INCREF( pyobj );
 }
-ObjectValueWrapper::~ObjectValueWrapper() { Py_XDECREF( this->_pyobj ); }
+ObjectValueWrapper::~ObjectValueWrapper() { 
+	Py_XDECREF( this->_pyobj ); 
+}
 Value*		ObjectValueWrapper::apply(				Value** arg_list, int count, CallContext* cc ) {
 	if ( PyCallable_Check( this->_pyobj ) ) {
 		PyObject *pargs, *result;
@@ -828,8 +826,13 @@ Value*		ObjectValueWrapper::intern(				PyObject* item ) {
 			one_typed_value_local( Array* out );
 			int count = PyObject_Length( item );
 			vl.out = new Array(count);
-			for ( int i = 0; i < count; i++ )
-				vl.out->append( ObjectValueWrapper::intern( PySequence_GetItem( item, i ) ) );
+
+			PyObject* temp;
+			for ( int i = 0; i < count; i++ ) {
+				temp = PySequence_GetItem( item, i );
+				vl.out->append( ObjectValueWrapper::intern( temp ) );
+				Py_DECREF( temp );
+			}
 			return_value( vl.out );
 		}
 		else {
