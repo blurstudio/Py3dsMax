@@ -15,10 +15,10 @@
 #include "maxscrpt.h"
 
 // Use if compiling for Python24 mappings, comment out for Python25+
-typedef inquiry			lenfunc;
-typedef int				Py_ssize_t;
-typedef intobjargproc	ssizeobjargproc;
-typedef	intargfunc		ssizeargfunc;
+//typedef inquiry			lenfunc;
+//typedef int				Py_ssize_t;
+//typedef intobjargproc	ssizeobjargproc;
+//typedef	intargfunc		ssizeargfunc;
 
 //-------------------------------------------------------------------------------------------------------------------------------
 
@@ -78,7 +78,7 @@ MXSValueWrapper_call( MXSValueWrapper* self, PyObject *args, PyObject *kwds ) {
 					Py_ssize_t pos			= 0;
 					int key_pos				= 0;
 
-					arg_list[arg_count]	= &keyarg_marker;
+					arg_list[arg_count]		= &keyarg_marker;
 
 					while ( PyDict_Next(kwds,&pos,&key,&py_value) ) {
 						arg_list[ arg_count + 1 + (key_pos*2) ] = Name::intern( PyString_AsString( key ) );
@@ -719,14 +719,55 @@ ObjectValueWrapper::~ObjectValueWrapper() {
 	Py_XDECREF( this->_pyobj ); 
 }
 Value*		ObjectValueWrapper::apply(				Value** arg_list, int count, CallContext* cc ) {
+	// Check to see if this instance can be a function
 	if ( PyCallable_Check( this->_pyobj ) ) {
-		PyObject *pargs, *result;
-		pargs	= ObjectValueWrapper::args( arg_list, count );
-		result	= PyEval_CallObject( this->_pyobj, pargs );
-		Py_DECREF( pargs );
-		return ObjectValueWrapper::intern( result );
+
+		// find the keyarg_marker to deliminate the break between arguments and keywords
+		int py_count = 0;
+		for ( int i = 0; i < count; i++ ) {
+			if ( arg_list[i] == &keyarg_marker ) {
+				break;
+			}
+			py_count++;
+		}
+
+		// generate the python arguments and keywords
+		PyObject *args = NULL;
+		PyObject *kwds = NULL;
+		PyObject *py_result = NULL;
+
+		// generate arguments
+		args = PyTuple_New( py_count );
+		for ( int i = 0; i < py_count; i++ ) {
+			PyTuple_SetItem( args, i, ObjectValueWrapper::pyintern( arg_list[i]->eval() ) );
+		}
+
+		if ( py_count != count ) {
+			// generate keywords
+			kwds = PyDict_New();
+			for ( int i = py_count + 1; i < count; i += 2 ) {
+				PyDict_SetItem( kwds, PyString_FromString( arg_list[i]->eval()->to_string() ), ObjectValueWrapper::pyintern( arg_list[i+1]->eval() ) );
+			}
+		}
+
+		// execute the python call
+		py_result = PyObject_Call( this->_pyobj, args, kwds );
+
+		Value* result = &undefined;
+		if ( py_result ) {
+			// Convert this to the output Value
+			result = ObjectValueWrapper::intern( py_result );
+		}
+		else { mprintf( "blurPython: an error occured trying to call a python method from maxscript, see logger for more details.\n" ); }
+		
+		// Release the python memory
+		if ( args )			{ Py_DECREF( args ); }
+		if ( kwds )			{ Py_DECREF( kwds ); }
+		if ( py_result )	{ Py_DECREF( py_result ); }
+
+		return result;
 	}
-	return Value::apply( arg_list, count, cc );
+	else { return Value::apply( arg_list, count, cc ); }
 }
 PyObject*	ObjectValueWrapper::args(				Value** arg_list, int count ) {
 	PyObject *out;

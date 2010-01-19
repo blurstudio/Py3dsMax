@@ -85,6 +85,9 @@ class ObjectValueWrapper : public Value {
 		void				sprin1(			CharStream* s );
 		char*				to_string();
 
+		BOOL				_is_collection()	{ return 1; }
+		BOOL				_is_function()		{ return 1; }
+
 		def_generic(		eq,				"==" );
 		def_generic(		get,			"get" );
 		def_generic(		put,			"put" );
