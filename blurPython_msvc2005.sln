@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "blurPython_msvc2005", "blurPython_msvc2005.vcproj", "{3061FD4F-4018-429F-82B7-E30592BACA37}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Max9-10_Python24|Win32 = Max9-10_Python24|Win32
+		Max9-10_Python24|x64 = Max9-10_Python24|x64
+		Max9-10x64_Python26|Win32 = Max9-10x64_Python26|Win32
+		Max9-10x64_Python26|x64 = Max9-10x64_Python26|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3061FD4F-4018-429F-82B7-E30592BACA37}.Max9-10_Python24|Win32.ActiveCfg = Max9-10_Python24|Win32
+		{3061FD4F-4018-429F-82B7-E30592BACA37}.Max9-10_Python24|Win32.Build.0 = Max9-10_Python24|Win32
+		{3061FD4F-4018-429F-82B7-E30592BACA37}.Max9-10_Python24|x64.ActiveCfg = Max9-10_Python24|x64
+		{3061FD4F-4018-429F-82B7-E30592BACA37}.Max9-10_Python24|x64.Build.0 = Max9-10_Python24|x64
+		{3061FD4F-4018-429F-82B7-E30592BACA37}.Max9-10x64_Python26|Win32.ActiveCfg = Max9-10x64_Python26|Win32
+		{3061FD4F-4018-429F-82B7-E30592BACA37}.Max9-10x64_Python26|Win32.Build.0 = Max9-10x64_Python26|Win32
+		{3061FD4F-4018-429F-82B7-E30592BACA37}.Max9-10x64_Python26|x64.ActiveCfg = Max9-10x64_Python26|x64
+		{3061FD4F-4018-429F-82B7-E30592BACA37}.Max9-10x64_Python26|x64.Build.0 = Max9-10x64_Python26|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
