@@ -1489,26 +1489,42 @@
 	</References>
 	<Files>
 		<Filter
-			Name="modules"
+			Name="include"
 			>
 			<File
-				RelativePath=".\modules\mxs.cpp"
+				RelativePath=".\imports.h"
 				>
 			</File>
 			<File
-				RelativePath=".\modules\python.cpp"
+				RelativePath=".\macros.h"
+				>
+			</File>
+			<File
+				RelativePath=".\protector.h"
+				>
+			</File>
+			<File
+				RelativePath=".\wrapper.h"
 				>
 			</File>
 		</Filter>
 		<Filter
-			Name="classes"
+			Name="src"
 			>
 			<File
-				RelativePath=".\classes\ObjectValueWrapper.cpp"
+				RelativePath=".\protector.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\classes\ObjectValueWrapper.h"
+				RelativePath=".\python_struct.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\studiomax_module.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\wrapper.cpp"
 				>
 			</File>
 		</Filter>
@@ -1518,10 +1534,6 @@
 		</File>
 		<File
 			RelativePath=".\blurPython.def"
-			>
-		</File>
-		<File
-			RelativePath=".\blurPython.h"
 			>
 		</File>
 	</Files>

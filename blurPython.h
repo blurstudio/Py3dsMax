@@ -3,19 +3,18 @@
 
 #include "IPathConfigMgr.h"
 
-PyMODINIT_FUNC init_max();
+// the initialize_blurpython function is ofund in the studiomax_module file
+PyMODINIT_FUNC initialize_blurpython();
 
 void BlurPythonInit() {
-	init_plugin( "blurPython", 1000 );
+	// Step 1: initialize the blur plugin
+	init_plugin( "blurPython", 1100 );
 
+	// Step 2: initialize python
 	Py_Initialize();
-	init_max();
 
-	// Hi-jack the stdout && stderr and redirect to maxscript listener
-//	PyRun_SimpleString( "import Py3dsMax" );
-//	PyRun_SimpleString( "import sys" );
-//	PyRun_SimpleString( "sys.stdout = Py3dsMax.StdLog()" );
-//	PyRun_SimpleString( "sys.stderr = Py3dsMax.StdLog()" );
+	// Step 3: initialize 3dsMax
+	initialize_blurpython();
 }
 
 #endif		__BLURPYTHON_H__
