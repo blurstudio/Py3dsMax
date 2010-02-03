@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 9.00
 # Visual Studio 2005
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "blurPython", "blurPython.vcproj", "{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "blurPython_msvc2005_sp1", "blurPython_msvc2005_sp1.vcproj", "{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

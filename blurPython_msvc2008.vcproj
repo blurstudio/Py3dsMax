@@ -144,7 +144,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="comctl32.lib odbc32.lib odbccp32.lib version.lib wininet.lib mnmath.lib geom.lib expr.lib bmm.lib maxscrpt.lib core.lib maxutil.lib Vfw32.lib mesh.lib msxml2.lib"
+				AdditionalDependencies="maxscrpt.lib core.lib maxutil.lib geom.lib"
 				ShowProgress="2"
 				OutputFile="$(OutDir)\blurPython26.dlx"
 				AdditionalLibraryDirectories="&quot;C:\Program Files (x86)\Autodesk\3ds Max 2010 SDK\maxsdk\x64\lib&quot;;c:\python26_64\libs"
@@ -230,7 +230,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="comctl32.lib odbc32.lib odbccp32.lib version.lib wininet.lib mnmath.lib geom.lib expr.lib bmm.lib maxscrpt.lib core.lib maxutil.lib Vfw32.lib mesh.lib msxml2.lib"
+				AdditionalDependencies="core.lib geom.lib maxscrpt.lib maxutil.lib"
 				OutputFile="$(OutDir)\blurPython24.dlx"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;C:\Program Files (x86)\Autodesk\3ds Max 2010 SDK\maxsdk\lib&quot;;c:\python24\libs"
