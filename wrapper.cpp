@@ -13,10 +13,10 @@
 #include "wrapper.h"
 
 // Uncomment if compiling for Python24 mappings, comment out for Python25+
-typedef inquiry			lenfunc;
-typedef int				Py_ssize_t;
-typedef intobjargproc	ssizeobjargproc;
-typedef	intargfunc		ssizeargfunc;
+//typedef inquiry			lenfunc;
+//typedef int				Py_ssize_t;
+//typedef intobjargproc	ssizeobjargproc;
+//typedef	intargfunc		ssizeargfunc;
 
 //---------------------------------------------------------------
 // ValueWrapper Implementation
@@ -73,6 +73,10 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 	// Step 3: pull out the proper method from maxscript
 	MXS_EVAL( self->mValue, vl.method );
 
+	if ( DEBUG_MODE ) { mprintf( "[blurPython DEBUG] Running ValueWrapper_call\n" ); }
+
+	vl.result = NULL;
+
 	// Step 4: call the maxscript method
 	if ( vl.method ) {
 		// Step 5: check to see if we need maxscript arguments
@@ -82,8 +86,9 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 			value_local_array(mxs_args,mxs_count);
 
 			// Step 7: add converted arguments
-			for ( int i = 0; i < arg_count; i++ )
+			for ( int i = 0; i < arg_count; i++ ) {
 				mxs_args[i] = ObjectWrapper::intern( PyTuple_GetItem( args, i ) );
+			}
 
 			// Step 8: add converted keywords
 			if ( key_count != -1 ) {
@@ -107,12 +112,16 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 			}
 
 			// Step 9: call the method and use try/catch to protect the memory
+			if ( DEBUG_MODE ) { mprintf( "[blurPython DEBUG] calling function with %i arguments and %i keywords, which is %i mxs args\n", arg_count, key_count, mxs_count ); }
 			try { vl.result = vl.method->apply( mxs_args, mxs_count ); }
 			catch ( ... ) {
-				pop_value_local_array(mxs_args);
 				MXS_CLEARERRORS();
 				PyErr_SetString( PyExc_Exception, "MAXScript error during function call (using args)." );
+				vl.result = NULL;
 			}
+
+			// clear the value local memory
+			pop_value_local_array(mxs_args);
 		}
 		else {
 			// Step 6: if we don't, simply call the method with a NULL array
@@ -129,11 +138,6 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 	if ( vl.result )
 		output = ObjectWrapper::py_intern( vl.result );
 	
-	if ( !output ) {
-		Py_INCREF( Py_None );
-		output = Py_None;
-	}
-
 	// Step 11: cleanup the maxscript errors
 	MXS_CLEANUP();
 

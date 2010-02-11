@@ -224,7 +224,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				ShowProgress="2"
-				OutputFile="$(OutDir)\blurPython24.dlx"
+				OutputFile="$(OutDir)\blurPython26.dlx"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="C:\max_sdk\max10\x64\lib;C:\Python26_64\libs"
 			/>
@@ -294,7 +294,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="core.lib geom.lib maxscrpt.lib maxutil.lib"
 				ShowProgress="2"
-				OutputFile="$(OutDir)\blurPython24.dlx"
+				OutputFile="$(OutDir)\blurPython26.dlx"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="C:\max_sdk\max10\x64\lib;C:\Python26_64\libs"
 				IgnoreDefaultLibraryNames="python26_d.lib"

@@ -16,6 +16,7 @@
 // 3dsMax Includes
 #include "structs.h"
 #include "strings.h"
+#include "excepts.h"
 //#include "Parser.h"
 //#include "objsets.h"
 //#include "maxobj.h"

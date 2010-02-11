@@ -5,15 +5,6 @@
 				that can be imported from it
 */
 
-//// 3dsMax imports
-//#include "max/include/imports.h"
-//#include "strings.h"
-//#include "maxscrpt.h"
-//#include "hold.h"
-//#include "Name.h"
-//
-//// python imports
-//#include <Python.h>
 #include "imports.h"
 
 // blurPython imports

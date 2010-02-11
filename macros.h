@@ -10,6 +10,8 @@
 #ifndef		__MACROS_H__
 #define		__MACROS_H__
 
+#define		DEBUG_MODE						false
+
 // Call this function to define and protect a series of values
 #define		MXS_PROTECT( VALUE_LOCALS )		init_thread_locals(); \
 											push_alloc_frame(); \
