@@ -222,15 +222,71 @@ studiomax_undoOff( PyObject* self, PyObject* args ) {
 	return Py_True;
 }
 
+// Py3dsMax.getVisController() - get the visibility controller of a node
+static PyObject*
+studiomax_getVisController( PyObject* self, PyObject* args ) {
+	if ( PyTuple_Size(args) == 1 ) {
+		// convert the input item to a maxscript value
+		PyObject* item	= PyTuple_GetItem(args,0);
+		Value* obj		= ObjectWrapper::intern(item);
+
+		if ( is_node(obj) ) {
+			return ObjectWrapper::py_intern( MAXControl::intern( ((MAXNode*)obj)->node->GetVisController() ) );
+		}
+	}
+
+	Py_INCREF( Py_None );
+	return Py_None;
+}
+
+// Py3dsMax.setVisController() - set the visibility controller of a node
+static PyObject*
+studiomax_setVisController( PyObject* self, PyObject* args ) {
+	bool success = false;
+	if ( PyTuple_Size(args) == 2 ) {
+		// convert the input items to maxscript values
+		PyObject* item	= PyTuple_GetItem(args,0);
+		PyObject* pctl	= PyTuple_GetItem(args,1);
+
+		Value* obj	= ObjectWrapper::intern(item);
+		Value* ctrl = ObjectWrapper::intern(pctl);
+
+		if ( is_node(obj) && is_controller(ctrl) ) {
+			try {
+				((MAXNode*) obj)->node->SetVisController(((MAXControl*) ctrl)->controller); 
+				success = true;
+			}
+			catch ( ... ) {};
+		}
+	}
+	if ( success ) {
+		Py_INCREF( Py_True );
+		return Py_True;
+	}
+	else {
+		Py_INCREF( Py_False );
+		return Py_False;
+	}
+}
+
 // define the Py3dsMax module built-in methods
 static PyMethodDef module_methods[] = {
+	// windows methods
 	{ "GetWindowHandle",	(PyCFunction)studiomax_getwindowhandle,		METH_NOARGS,	"Get the HWND value of the max window." },
 	{ "GetPluginInstance",	(PyCFunction)studiomax_getplugininstance,	METH_NOARGS,	"Get the HINSTANCE value of the max window." },
 	{ "DispatchMessage",	(PyCFunction)studiomax_dispatchmessage,		METH_VARARGS,	"Send the MAX Window a message." },
+
+	// maxscript undo stack
 	{ "redo",				(PyCFunction)studiomax_redo,				METH_NOARGS,	"Redo's the lastest stack." },
 	{ "undo",				(PyCFunction)studiomax_undo,				METH_NOARGS,	"Undo's the latest stack." },
 	{ "undoOn",				(PyCFunction)studiomax_undoOn,				METH_NOARGS,	"Starts a new undo stack." },
 	{ "undoOff",			(PyCFunction)studiomax_undoOff,				METH_VARARGS,	"Finishes the current undo stack." },
+
+	// maxscript workarounds
+	{ "getVisController",	(PyCFunction)studiomax_getVisController,	METH_VARARGS,	"Get a nodes visibility controller" },
+	{ "setVisController",	(PyCFunction)studiomax_setVisController,	METH_VARARGS,	"Set a nodes visibility controller" },
+
+	// python methods
 	{ "runScript",			(PyCFunction)studiomax_runScript,           METH_VARARGS,   "Runs a python file in our global scope." },
 	{ NULL, NULL, 0, NULL }
 };
