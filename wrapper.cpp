@@ -1150,8 +1150,8 @@ ObjectWrapper::py_intern( Value* val ) {
 		return Py_False;
 	}
 
-	// Step 9: check for all collections
-	else if ( is_collection( mxs_check ) ) {
+	// Step 9: check for all collections (except bitarrays)
+	else if ( is_collection( mxs_check ) && !is_bitarray( mxs_check ) ) {
 		// Step 10: grab the collection's count
 		int count = mxs_check->_get_property( n_count )->to_int();
 		
