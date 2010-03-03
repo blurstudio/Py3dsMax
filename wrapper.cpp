@@ -12,6 +12,8 @@
 #include "protector.h"
 #include "wrapper.h"
 
+#include "Parser.h"  // for print functions
+
 // Uncomment if compiling for Python24 mappings, comment out for Python25+
 //typedef inquiry			lenfunc;
 //typedef int				Py_ssize_t;
@@ -73,8 +75,6 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 	// Step 3: pull out the proper method from maxscript
 	MXS_EVAL( self->mValue, vl.method );
 
-	if ( DEBUG_MODE ) { mprintf( "[blurPython DEBUG] Running ValueWrapper_call\n" ); }
-
 	vl.result = NULL;
 
 	// Step 4: call the maxscript method
@@ -112,7 +112,6 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 			}
 
 			// Step 9: call the method and use try/catch to protect the memory
-			if ( DEBUG_MODE ) { mprintf( "[blurPython DEBUG] calling function with %i arguments and %i keywords, which is %i mxs args\n", arg_count, key_count, mxs_count ); }
 			try { vl.result = vl.method->apply( mxs_args, mxs_count ); }
 			catch ( ... ) {
 				MXS_CLEARERRORS();
@@ -254,7 +253,6 @@ ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
 		if ( vl.mxs_check ) {
 			try { vl.mxs_result = vl.mxs_check->_get_property( vl.mxs_key ); }
 			catch ( ... ) {
-				mprintf( "error occurred looking up property: %s\n", propname.c_str() );
 				MXS_CLEARERRORS();
 			}
 		}
@@ -267,7 +265,6 @@ ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
 			// Step 7: Set properties for values
 			try { vl.mxs_check->_set_property( vl.mxs_key, ObjectWrapper::intern(value) ); }
 			catch ( ... ) {
-				mprintf( "error setting property: %s\n", propname.c_str() );
 				MXS_CLEARERRORS();
 			}
 
@@ -395,8 +392,9 @@ ValueWrapper_item( PyObject* self, int index ) {
 static PyObject*
 ValueWrapper_objitem( PyObject* self, PyObject* key ) {
 	// Step 1: check to see if the key is a number, then use the above method
-	if ( key->ob_type = &PyInt_Type )
+	if ( key->ob_type == &PyInt_Type ) {
 		return ValueWrapper_item( self, PyInt_AsLong( key ) );
+	}
 
 	// Step 2: protect the maxscript memory
 	MXS_PROTECT( three_value_locals( mxs_index, mxs_check, mxs_result ) );
@@ -457,8 +455,8 @@ ValueWrapper_setitem( PyObject* self, int index, PyObject* value ) {
 	}
 
 	// Step 6: convert the result
-	int result = 0;
-	if ( vl.mxs_result ) { result = 1; }
+	int result = -1;
+	if ( vl.mxs_result ) { result = 0; }
 	else { PyErr_SetString( PyExc_IndexError, "__setitem__ index is out of range" ); }
 
 	// Step 6: cleanup maxscript memory
@@ -471,11 +469,12 @@ ValueWrapper_setitem( PyObject* self, int index, PyObject* value ) {
 static int
 ValueWrapper_setobjitem( PyObject* self, PyObject* key, PyObject* value ) {
 	// Step 1: check to see if the python object is a number type, if so, use the above method
-	if ( key->ob_type == &PyInt_Type )
+	if ( key->ob_type == &PyInt_Type ) {
 		return ValueWrapper_setitem( self, PyInt_AsLong( key ), value );
+	}
 
 	// Step 2: protect the maxscript memory
-	MXS_PROTECT( two_value_locals( mxs_check, mxs_result ) );
+	MXS_PROTECT( one_value_local( mxs_check ) );
 
 	// Step 3: evaluate the value
 	MXS_EVAL( ((ValueWrapper*) self)->mValue, vl.mxs_check );
@@ -487,13 +486,15 @@ ValueWrapper_setobjitem( PyObject* self, PyObject* key, PyObject* value ) {
 	arg_list[1] = ObjectWrapper::intern( value );
 
 	// Step 5: call the put virtual method
-	try { vl.mxs_result = vl.mxs_check->put_vf( arg_list, 2 ); }
+	int result = -1;
+	try { 
+		vl.mxs_check->put_vf( arg_list, 2 );
+		result = 0;
+	}
 	MXS_CATCHERRORS();
 
 	// Step 6: convert the results
-	int result = 0;
-	if ( vl.mxs_result ) { result = 1; }
-	else { PyErr_SetString( PyExc_IndexError, "__setitem__ index is out of range" ); }
+	if ( result == -1 ) { PyErr_SetString( PyExc_IndexError, "__setitem__ could not set the maxscript value" ); }
 
 	// Step 7: cleanup maxscript memory
 	pop_value_local_array( arg_list );
@@ -909,6 +910,15 @@ ObjectWrapper::collect() {
 	delete this;
 }
 
+// __eq__ function: checks to see if one objectwrapper is equal to another
+Value*
+ObjectWrapper::eq_vf( Value** arg_list, int count ) {
+	if ( is_objectwrapper( arg_list[0] ) && is_objectwrapper( arg_list[0] ) ) {
+		return ( ((ObjectWrapper*) arg_list[0])->object() == ((ObjectWrapper*) arg_list[1])->object() ) ? &true_value : &false_value;
+	}
+	return &false_value;
+}
+
 // __getattr__ function: get a property of a python value from maxscript
 Value*
 ObjectWrapper::get_property( Value** arg_list, int count ) {
@@ -952,37 +962,37 @@ ObjectWrapper::set_property( Value** arg_list, int count ) {
 }
 
 // __getitem__ function: get a value from a python sequence/mapping from maxscript
-//Value*
-//ObjectWrapper::get_vf( Value** arg_list, int count ) {
-//	MXS_PROTECT( one_value_local( output ) );
-//
-//	PyObject* py_key = NULL;
-//	PyObject* py_result = NULL;
-//
-//	// Step 1: convert the input keys
-//	Value* key = arg_list[0]->eval();
-//
-//	try {
-//		if ( is_number( key ) ) { py_key = PyInt_FromLong( key->to_int() ); }
-//		else					{ py_key = PyString_FromString( key->to_string() ); }
-//	}
-//	MXS_CATCHERRORS();
-//
-//	// Step 2: call the getItem method for the python object
-//	if ( py_key && this->mObject ) {
-//		py_result = PyObject_GetItem( this->mObject, py_key );
-//	}
-//
-//	// Step 4: convert the return to a maxscript value
-//	vl.output = ObjectWrapper::intern( py_result );
-//
-//	// Step 5: release the python memory
-//	Py_XDECREF( py_key );
-//	Py_XDECREF( py_result );
-//
-//	// Step 6: return the maxscript value, protecting its memory
-//	MXS_RETURN( vl.output );
-//}
+Value*
+ObjectWrapper::get_vf( Value** arg_list, int count ) {
+	MXS_PROTECT( one_value_local( output ) );
+
+	PyObject* py_key	= NULL;
+	PyObject* py_result = NULL;
+
+	// Step 1: convert the input keys
+	Value* key = arg_list[0]->eval();
+
+	try {
+		if ( is_number( key ) ) { py_key = PyInt_FromLong( key->to_int() ); }
+		else					{ py_key = PyString_FromString( key->to_string() ); }
+	}
+	MXS_CATCHERRORS();
+
+	// Step 2: call the getItem method for the python object
+	if ( py_key && this->mObject ) {
+		py_result = PyObject_GetItem( this->mObject, py_key );
+	}
+
+	// Step 4: convert the return to a maxscript value
+	vl.output = ObjectWrapper::intern( py_result );
+
+	// Step 5: release the python memory
+	Py_XDECREF( py_key );
+	Py_XDECREF( py_result );
+
+	// Step 6: return the maxscript value, protecting its memory
+	MXS_RETURN( vl.output );
+}
 
 // object function: return the python object for this instance
 PyObject*
@@ -991,11 +1001,11 @@ ObjectWrapper::object() {
 }
 
 // __setitem__ function: sets an item for a python sequence/mapping type
-//Value*
-//ObjectWrapper::put_vf( Value** arg_list, int count ) {
-//	// \todo: implement this method
-//	return &ok;
-//}
+Value*
+ObjectWrapper::put_vf( Value** arg_list, int count ) {
+	// \todo: implement this method
+	return &ok;
+}
 
 // print function: prints this value to the screen
 void

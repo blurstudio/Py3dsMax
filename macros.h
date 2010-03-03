@@ -10,7 +10,9 @@
 #ifndef		__MACROS_H__
 #define		__MACROS_H__
 
-#define		DEBUG_MODE						false
+#define		DEBUG_MODE						true
+
+#define		DEBUG_MSG( MSG )				if ( DEBUG_MODE ) { PyRun_SimpleString( "print %%MSG%%" ); }
 
 // Call this function to define and protect a series of values
 #define		MXS_PROTECT( VALUE_LOCALS )		init_thread_locals(); \
@@ -31,7 +33,6 @@
 // Quick macro to catch all errors, clean them, and set a MAXScript error for Python
 #define		MXS_CATCHERRORS()				catch ( ... ) { \
 												MXS_CLEARERRORS(); \
-												PyErr_SetString( PyExc_Exception, "MAXScript error has occurred." ); \
 											}
 
 // Call this macro to cleanup MAXScript memory before exiting a function

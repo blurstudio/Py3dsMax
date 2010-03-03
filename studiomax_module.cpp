@@ -264,4 +264,6 @@ init_module(void) {
 	// Step 4: create the mxs class in the Py3dsMax module
 	PyObject* instance = mxs_new( &MxsType, NULL, NULL );
 	PyModule_AddObject( module, "mxs", instance );
+
+	mprintf( "[blurPython] DLL has been successfully loaded.\n" );
 }

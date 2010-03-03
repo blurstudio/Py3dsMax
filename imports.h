@@ -17,7 +17,7 @@
 #include "structs.h"
 #include "strings.h"
 #include "excepts.h"
-//#include "Parser.h"
+#include "Parser.h"
 //#include "objsets.h"
 //#include "maxobj.h"
 //#include "mathpro.h"

@@ -18,10 +18,16 @@ public:
 	ObjectWrapper( PyObject* obj = NULL );
 	~ObjectWrapper();
 
+	// maxscript value methods
+	__declspec( dllexport ) virtual Value* eq_vf(  Value** arg_list, int arg_count );
+	__declspec( dllexport ) virtual Value* get_vf( Value** arg_list, int arg_count );
+	__declspec( dllexport ) virtual Value* put_vf( Value** arg_list, int arg_count );
+
+	// maxscript value comparisons
 	classof_methods( ObjectWrapper, Value );
 #define is_objectwrapper(o) ((o)->tag == class_tag(ObjectWrapper))
 
-	// Instance Methods
+	// objectwrapper instance methods
 	Value*			apply( Value** arg_list, int count, CallContext* cc = 0 );
 	virtual void	collect();
 	Value*			get_property( Value** arg_list, int count );
@@ -33,18 +39,12 @@ public:
 	BOOL			_is_collection()	{ return 1; }
 	BOOL			_is_function()		{ return 1; }
 
-	// Static Methods
+	// objectwrapper static methods
 	static Value*		intern( PyObject* obj );
 	static bool			init();
 	static void			gc_protect( PyObject* obj );
 	static bool			is_wrapper( PyObject* obj );
 	static PyObject*	py_intern( Value* val );
-
-	// Define MAXScript comparisons
-//	def_generic( eq, "==" );
-//	Value*				eq_vf(	Value** arglist, int arg_count);
-//	Value*				get_vf(	Value** arglist, int arg_count);
-//	Value*				put_vf(	Value** arglist, int arg_count);
 };
 
 #endif		__WRAPPER_H__
