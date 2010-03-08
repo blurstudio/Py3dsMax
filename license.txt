@@ -1,0 +1,6 @@
+All of the blurPython code has been released under the GNU General Public License, and as such any use of this code must comply
+with the terms outlined under the GPL license.
+
+For more information regarding the GPL, please see the GNU website at:
+
+http://www.gnu.org/licenses/licenses.html#GPL

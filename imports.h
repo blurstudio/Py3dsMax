@@ -4,6 +4,11 @@
 	\remarks	This file contains with it all the imports necessary
 				for this plugin to compile, and in the precise order
 				they need to be imported.
+
+	\author		Blur Studio (c) 2010
+	\email		beta@blur.com
+
+	\license	This software is released under the GNU General Public License.  For more info, visit: http://www.gnu.org/
 */
 
 #ifndef	__IMPORTS_H__

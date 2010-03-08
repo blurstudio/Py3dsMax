@@ -3,6 +3,11 @@
 
 	\remarks	This file defines the Py3dsMax module for python, and the mxs class
 				that can be imported from it
+
+	\author		Blur Studio (c) 2010
+	\email		beta@blur.com
+
+	\license	This software is released under the GNU General Public License.  For more info, visit: http://www.gnu.org/
 */
 
 #include "imports.h"

@@ -1,9 +1,14 @@
 /*
- \file		macros.h
+	\file		macros.h
 
- \remarks	Protecting maxscript memory is a hard thing to do, and its often easy to
-			forget the proper steps, and sometimes, easy to do it incorrectly.  These macros
-			make it a bit easier to work with.
+	 \remarks	Protecting maxscript memory is a hard thing to do, and its often easy to
+				forget the proper steps, and sometimes, easy to do it incorrectly.  These macros
+				make it a bit easier to work with.
+
+	\author		Blur Studio (c) 2010
+	\email		beta@blur.com
+
+	\license	This software is released under the GNU General Public License.  For more info, visit: http://www.gnu.org/
 
 */
 

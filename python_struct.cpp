@@ -2,6 +2,11 @@
 	\file		python_struct.cpp
 
 	\remarks	This file defines the 3dsMax struct called python
+
+	\author		Blur Studio (c) 2010
+	\email		beta@blur.com
+
+	\license	This software is released under the GNU General Public License.  For more info, visit: http://www.gnu.org/
 */
 
 #include "imports.h"

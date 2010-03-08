@@ -2,6 +2,11 @@
 	\file		wrapper.cpp
 
 	\remarks	Implementation of the ValueWrapper and ObjectWrapper classes
+
+	\author		Blur Studio (c) 2010
+	\email		beta@blur.com
+
+	\license	This software is released under the GNU General Public License.  For more info, visit: http://www.gnu.org/
 */
 
 #include "imports.h"

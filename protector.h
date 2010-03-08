@@ -4,6 +4,11 @@
 	\remarks	The Protector class is a Value* class that contains
 				a list of ValueWrapper*'s that have been created to protect
 				them during MAXScript garbage collection
+
+	\author		Blur Studio (c) 2010
+	\email		beta@blur.com
+
+	\license	This software is released under the GNU General Public License.  For more info, visit: http://www.gnu.org/
 */
 
 #ifndef		__PROTECTOR_H__
