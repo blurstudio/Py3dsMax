@@ -55,7 +55,7 @@ Value* Protector::get_property( Value** arg_list, int count ) {
 }
 
 void Protector::protect( PyObject* obj ) {
-	// Step 2: insert the object into the protection list
+	// Step 1: insert the object into the protection list
 	protected_objects->push_back( obj );
 }
 

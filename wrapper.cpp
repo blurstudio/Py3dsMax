@@ -55,14 +55,11 @@ ValueWrapper_dealloc( ValueWrapper* self ) {
 	// Step 2: dereference the parent pointer
 	Py_XDECREF( self->mParent );
 
-	// Step 3: call the garbage collection for the value
-	if ( self->mValue ) { self->mValue->gc(); }
-
-	// Step 4: clear the pointers
+	// Step 3: clear the pointers
 	self->mParent	= NULL;
 	self->mValue	= NULL;
 
-	// Step 6: fre the python memory
+	// Step 4: fre the python memory
 	self->ob_type->tp_free( (PyObject*) self );
 }
 
