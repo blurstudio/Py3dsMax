@@ -56,4 +56,22 @@
 											throw RuntimeError( "Python Exception: Traceback printed in listener." ); \
 										}
 
+#define		PY_PROCESSERROR( PYEXC, MEXC )  MXS_CLEARERRORS(); \
+											StringStream* buffer = new StringStream("MAXScript Error Has Occurred: \n"); \
+											buffer->gc_trace(); \
+											MEXC.sprin1(buffer); \
+											PyErr_SetString( PYEXC, buffer->to_string() ); \
+											delete buffer; \
+
+#define		PY_CATCHMXSERROR()			catch ( MAXScriptException& e ) { \
+											error_message_box( e, "Error" ); \
+											PyErr_SetString( PyExc_RuntimeError, "MAXScript Error Occurred - see listener for details." ); \
+										} \
+										catch ( ... ) { \
+											MXS_CLEARERRORS(); \
+											PyErr_SetString( PyExc_RuntimeError, "Unknown MAXScript Error Occurred" ); \
+										}
+
+
+
 #endif		__MACROS_H__

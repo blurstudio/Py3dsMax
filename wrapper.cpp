@@ -192,32 +192,43 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 	std::string		propname	=  std::string( key );
 
 	// Step 3: loop through the parent hieararchy looking for nested parameters
-	while ( wrapper && !vl.mxs_result ) {
+	bool success = false;
+	while ( wrapper ) {
 		// Step 4: evaluate the current wrappers level
 		vl.mxs_key	= Name::intern( (char*) propname.c_str() );
 		MXS_EVAL( wrapper->mValue, vl.mxs_check );
 
 		// Step 5: try to pull the value from the current level
-		if ( vl.mxs_check ) {
-			try { vl.mxs_result = vl.mxs_check->_get_property( vl.mxs_key ); }
+		if ( key[0] == "_"[0] || ((ValueWrapper*) wrapper)->mParent ) {
+			try { 
+				vl.mxs_result = vl.mxs_check->_get_property( vl.mxs_key ); 
+				success = true;
+			}
 			MXS_CATCHERRORS();
+
+			// Step 6: update the propname
+			if ( !success ) {
+				propname.insert( 0, "." );
+				propname.insert( 0, wrapper->mPropName );
+				wrapper = (ValueWrapper*) wrapper->mParent;
+			}
+			else { wrapper = NULL; }
 		}
+		// Step 7: end of the road check
+		else {
+			try {
+				vl.mxs_result = vl.mxs_check->_get_property( vl.mxs_key ); 
+				success = true;
+			}
+			PY_CATCHMXSERROR();
 
-		// Step 6: ignore undefined items while using nested parameters
-		if ( wrapper->mParent && vl.mxs_result == &undefined )
-			vl.mxs_result = NULL;
-
-		// Step 7: update the propname
-		propname.insert( 0, "." );
-		propname.insert( 0, wrapper->mPropName );
-
-		wrapper = (ValueWrapper*) wrapper->mParent;
+			wrapper = NULL;
+		}
 	}
 
 	// Step 8: convert the result to a python variable
 	PyObject* output = NULL;
-	if ( !vl.mxs_result ) { PyErr_SetString( PyExc_AttributeError, key ); }
-	else {
+	if ( success ) {
 		output = ObjectWrapper::py_intern( vl.mxs_result );
 
 		// Step 9: store nested parameters
@@ -227,6 +238,7 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 			((ValueWrapper*) output)->mPropName = key;
 		}
 	}
+	else { PyErr_SetString( PyExc_AttributeError, propname.c_str() ); }
 
 	// Step 10: cleanup maxscript memory
 	MXS_CLEANUP();
@@ -246,43 +258,40 @@ ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
 
 	// Step 4: convert the inputed python value to a maxscript value
 	int result = 1;
-	while ( wrapper && !vl.mxs_result ) {
+	while ( wrapper ) {
 		// Step 4: evaluate the current wrappers level
-		vl.mxs_key	= Name::intern( (char*) propname.c_str() );
-		vl.mxs_check = wrapper->mValue;
+		vl.mxs_key		= Name::intern( (char*) propname.c_str() );
+		vl.mxs_check	= wrapper->mValue;
 
-		// Step 5: try to pull the value from the current level
-		if ( vl.mxs_check ) {
-			try { vl.mxs_result = vl.mxs_check->_get_property( vl.mxs_key ); }
-			catch ( ... ) {
-				MXS_CLEARERRORS();
+		// Step 6: check to see if this item can be accessed via the parent
+		if ( ((ValueWrapper*) wrapper)->mParent ) {
+			try {
+				vl.mxs_check->_set_property( vl.mxs_key, ObjectWrapper::intern(value) );
+				result = 0;
+			}
+			MXS_CATCHERRORS();
+
+			// Step 7: Check to see if the above operation was successful, if it was, exit out of the loop
+			if ( result == 0 ) {
+				wrapper = NULL;
+			}
+			// Step 8: Otherwise, update the keystring and try the parent
+			else {
+				propname.insert( 0, "." );
+				propname.insert( 0, wrapper->mPropName );
+				wrapper = (ValueWrapper*) ((ValueWrapper*) wrapper)->mParent;
 			}
 		}
-
-		// Step 6: ignore undefined items while having a parent hierarchy
-		if ( wrapper->mParent && vl.mxs_result == &undefined )
-			vl.mxs_result = NULL;
-
-		else if ( vl.mxs_result ) {
-			// Step 7: Set properties for values
-			try { vl.mxs_check->_set_property( vl.mxs_key, ObjectWrapper::intern(value) ); }
-			catch ( ... ) {
-				MXS_CLEARERRORS();
+		// Step 9: if there is no parent, it is the end of the line for this test
+		else {
+			try {
+				vl.mxs_check->_set_property( vl.mxs_key, ObjectWrapper::intern(value) );
+				result = 0;
 			}
+			PY_CATCHMXSERROR();
 
-			result = 0;
-			break;
+			wrapper = NULL; // regardless, this will cause the wrapper to be NULL
 		}
-
-		// Step 8: update the keystring
-		propname.insert( 0, "." );
-		propname.insert( 0, wrapper->mPropName );
-		wrapper = (ValueWrapper*) ((ValueWrapper*) wrapper)->mParent;
-	}
-
-	// Step 9: Set the python error if necessary
-	if ( result == 1 ) {
-		PyErr_SetString( PyExc_AttributeError, propname.c_str() );
 	}
 
 	MXS_CLEANUP();
@@ -1153,7 +1162,7 @@ ObjectWrapper::py_intern( Value* val ) {
 	}
 
 	// Step 9: check for all collections (except bitarrays)
-	else if ( is_collection( mxs_check ) && !is_bitarray( mxs_check ) ) {
+	else if ( is_collection( mxs_check ) && !is_bitarray( mxs_check ) && !( mxs_check ) ) {
 		// Step 10: grab the collection's count
 		int count = mxs_check->_get_property( n_count )->to_int();
 		

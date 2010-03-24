@@ -31,6 +31,7 @@ public:
 	// maxscript value comparisons
 	classof_methods( ObjectWrapper, Value );
 #define is_objectwrapper(o) ((o)->tag == class_tag(ObjectWrapper))
+#define is_maxmodifierarray(o) ((o)->tag == class_tag(MAXModifierArray))
 
 	// objectwrapper instance methods
 	Value*			apply( Value** arg_list, int count, CallContext* cc = 0 );
