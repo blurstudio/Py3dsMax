@@ -111,6 +111,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython_rc_template.txt $(SolutionDir)\blurPython.rc"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -375,6 +376,14 @@
 		</File>
 		<File
 			RelativePath=".\blurPython.def"
+			>
+		</File>
+		<File
+			RelativePath=".\blurPython.rc"
+			>
+		</File>
+		<File
+			RelativePath=".\resource.h"
 			>
 		</File>
 	</Files>
