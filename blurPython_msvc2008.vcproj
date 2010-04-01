@@ -31,6 +31,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython_rc_template.txt $(SolutionDir)\blurPython.rc"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -192,6 +193,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython_rc_template.txt $(SolutionDir)\blurPython.rc"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -276,6 +278,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython_rc_template.txt $(SolutionDir)\blurPython.rc"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
