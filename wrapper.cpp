@@ -19,11 +19,15 @@
 
 #include "Parser.h"  // for print functions
 
-// Uncomment if compiling for Python24 mappings, comment out for Python25+
-//typedef inquiry			lenfunc;
-//typedef int				Py_ssize_t;
-//typedef intobjargproc	ssizeobjargproc;
-//typedef	intargfunc		ssizeargfunc;
+// define these properties if the MAKE_PY26_COMPAT preprocessor definition exists
+#ifdef MAKE_PY26_COMPAT
+
+typedef inquiry			lenfunc;
+typedef int				Py_ssize_t;
+typedef intobjargproc	ssizeobjargproc;
+typedef	intargfunc		ssizeargfunc;
+
+#endif
 
 //---------------------------------------------------------------
 // ValueWrapper Implementation
