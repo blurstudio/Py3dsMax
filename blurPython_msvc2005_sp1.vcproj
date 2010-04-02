@@ -1142,7 +1142,7 @@
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="0"
-			ManagedExtensions="1"
+			ManagedExtensions="0"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -1277,6 +1277,10 @@
 		</File>
 		<File
 			RelativePath=".\blurPython.rc"
+			>
+		</File>
+		<File
+			RelativePath=".\version_h_template.txt"
 			>
 		</File>
 	</Files>
