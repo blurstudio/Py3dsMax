@@ -1,0 +1,16 @@
+/*
+Versioning is handled through a couple of files and a pre-build event 
+to allow svn revision numbers to automatically be included/incremented.
+
+version.h: this is an auto-generated file with the build date and svn 
+	revision number of the project.It is included throughout the project 
+	to get the version and build info it defines.
+
+version_h_template.txt: this is where version numbers should be
+	incremened by hand.	This file is read by subwcrev.exe which spits
+	out version.h during a pre-build event.
+*/
+
+
+#define BLURPYTHON_VERSION "0,8,0,$WCREV$"
+#define BLURPYTHON_BUILDDATE "$WCNOW"

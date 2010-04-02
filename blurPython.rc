@@ -1,5 +1,12 @@
 // Microsoft Visual C++ generated resource script.
-//
+
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+// NOTE: Edits should be made to the template (.rct file) and not the .rc file.
+//  The rc file is recreated from the template file every build.
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+
 #include "resource.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
@@ -53,7 +60,7 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,8,0,9394
+ FILEVERSION 0,8,0,9405
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -71,8 +78,8 @@ BEGIN
             VALUE "Comments", "Blur Py3dsMax Plugin"
             VALUE "CompanyName", "Blur Studio"
             VALUE "FileDescription", "blurPython Dynamic Link Library"
-            VALUE "FileVersion", "0, 8, 0, 9394"
-			VALUE "Build Date", "2010/04/01 12:01:25"
+            VALUE "FileVersion", "0, 8, 0, 9405"
+			VALUE "Build Date", "2010/04/02 11:24:02"
             VALUE "LegalCopyright", "Copyright (C) 2010"
             VALUE "ProductName", "blurPython Dynamic Link Library"
         END

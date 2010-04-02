@@ -11,6 +11,7 @@
 */
 
 #include "imports.h"
+#include "version.h"
 
 // blurPython imports
 #include "macros.h"
@@ -274,6 +275,26 @@ studiomax_setVisController( PyObject* self, PyObject* args ) {
 	}
 }
 
+// Py3dsMax.getVersion() - gets the version number of Py3dsMax as a string
+static PyObject*
+studiomax_getVersion( PyObject* self ){
+	PyObject* vstr = PyString_FromString(BLURPYTHON_VERSION);
+	return vstr;
+	//System::String^ aName = System::Reflection::Assembly::GetExecutingAssembly()->GetName()->Version->ToString();
+	//array<System::Reflection::Module^>^moduleArray;
+	//moduleArray = Assembly::GetExecutingAssembly()->GetModules(false);
+	// This project only has one dll so get it
+	//System::Reflection::Module^ blurPythonModule = moduleArray[0];
+	//System::Type^ versionType = AssemblyFileVersionAttribute::typeid;
+	//array<System::Attribute^>^ customAttr = (array<System::Attribute^>^)blurPythonModule->GetCustomAttributes(false);
+	//System::String^ fVersion = "";
+	//if (customAttr->Length > 0){
+	//	fVersion = ((AssemblyFileVersionAttribute^)customAttr[0])->Version;
+	//}
+	//return PyString_FromString(aName->FullName);
+	//return Py_None;
+}
+
 // define the Py3dsMax module built-in methods
 static PyMethodDef module_methods[] = {
 	// windows methods
@@ -293,6 +314,10 @@ static PyMethodDef module_methods[] = {
 
 	// python methods
 	{ "runScript",			(PyCFunction)studiomax_runScript,           METH_VARARGS,   "Runs a python file in our global scope." },
+
+	// Version Functions
+	{ "getVersion",			(PyCFunction)studiomax_getVersion,			METH_NOARGS,	"Get the Py3dsMax version" },
+
 	{ NULL, NULL, 0, NULL }
 };
 

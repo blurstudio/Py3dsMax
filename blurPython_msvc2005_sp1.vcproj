@@ -27,7 +27,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\version_h_template.txt $(SolutionDir)\version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -111,7 +111,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\version_h_template.txt $(SolutionDir)\version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -199,7 +199,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\version_h_template.txt $(SolutionDir)\version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -285,7 +285,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\version_h_template.txt $(SolutionDir)\version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -372,7 +372,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\version_h_template.txt $(SolutionDir)\version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -458,7 +458,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\version_h_template.txt $(SolutionDir)\version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -545,7 +545,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\version_h_template.txt $(SolutionDir)\version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -631,7 +631,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\version_h_template.txt $(SolutionDir)\version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -718,7 +718,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\version_h_template.txt $(SolutionDir)\version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -804,7 +804,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\version_h_template.txt $(SolutionDir)\version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -891,7 +891,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\version_h_template.txt $(SolutionDir)\version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -977,7 +977,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\version_h_template.txt $(SolutionDir)\version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -1061,7 +1061,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\version_h_template.txt $(SolutionDir)\version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -1142,10 +1142,11 @@
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="0"
+			ManagedExtensions="1"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)version_h_template.txt $(SolutionDir)version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -1165,8 +1166,8 @@
 				Optimization="0"
 				AdditionalIncludeDirectories="c:\python26_64\include;&quot;C:\Program Files (x86)\Autodesk\3ds Max 2009 SDK\maxsdk\include&quot;;&quot;C:\Program Files (x86)\Autodesk\3ds Max 2009 SDK\maxsdk\include\maxscrpt&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_CRD_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE"
-				MinimalRebuild="true"
-				BasicRuntimeChecks="3"
+				MinimalRebuild="false"
+				BasicRuntimeChecks="0"
 				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
@@ -1192,6 +1193,7 @@
 				IgnoreDefaultLibraryNames=""
 				ModuleDefinitionFile="blurPython.def"
 				GenerateDebugInformation="true"
+				AssemblyDebug="1"
 				SubSystem="2"
 				TargetMachine="17"
 			/>
@@ -1275,10 +1277,6 @@
 		</File>
 		<File
 			RelativePath=".\blurPython.rc"
-			>
-		</File>
-		<File
-			RelativePath=".\blurPython.rct"
 			>
 		</File>
 	</Files>
