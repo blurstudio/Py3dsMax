@@ -9,7 +9,7 @@
 	\license	This software is released under the GNU General Public License.  For more info, visit: http://www.gnu.org/
 */
 
-#include "imports.h";
+#include "imports.h"
 
 #pragma comment( lib, "comctl32.lib" )
 
