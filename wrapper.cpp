@@ -189,7 +189,9 @@ ValueWrapper_compare( PyObject* self, PyObject* other ) {
 static PyObject*
 ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 	// Step 1: protect maxscript memory
-	MXS_PROTECT( three_value_locals( mxs_key, mxs_check, mxs_result ) );
+	init_thread_locals();
+	three_value_locals( mxs_key, mxs_check, mxs_result );
+	save_current_frames();
 
 	// Step 2: setup the nested parameter lookup option
 	ValueWrapper*	wrapper		= self;
@@ -221,7 +223,9 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 		// Step 7: end of the road check
 		else {
 			try {
-				vl.mxs_result = vl.mxs_check->_get_property( vl.mxs_key ); 
+				//ValueMetaClass* tempTag = wrapper->mValue->tag;
+				vl.mxs_result = vl.mxs_check->_get_property( vl.mxs_key );
+				//wrapper->mValue->tag = tempTag;
 				success = true;
 			}
 			PY_CATCHMXSERROR();
@@ -245,8 +249,10 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 	else { PyErr_SetString( PyExc_AttributeError, propname.c_str() ); }
 
 	// Step 10: cleanup maxscript memory
-	MXS_CLEANUP();
-
+	//MXS_CLEANUP();
+	//pop_alloc_frame();
+	pop_value_locals();
+	
 	return output;
 }
 
@@ -308,6 +314,9 @@ static PyObject*
 ValueWrapper_str( ValueWrapper* self ) {
 	// Step 1: protect values
 	MXS_PROTECT( two_typed_value_locals( Value* mxs_check, StringStream* mxs_stream ) );
+	//init_thread_locals();
+	//two_typed_value_locals( Value* mxs_check, StringStream* mxs_stream );
+	//save_current_frames();
 
 	// Step 2: evaluate the value
 	MXS_EVAL( self->mValue, vl.mxs_check );
@@ -324,17 +333,25 @@ ValueWrapper_str( ValueWrapper* self ) {
 	// Step 5: try to use the builtin maxscript print out
 	else {
 		vl.mxs_stream = new StringStream();
-
+		
+		//ValueMetaClass* outVal = new ValueMetaClass();
+		//StringStream* check_stream = new StringStream();
 		try {
 			vl.mxs_check->sprin1( vl.mxs_stream );
 			output = PyString_FromString( vl.mxs_stream->to_string() );
+			//vl.mxs_check->sprin1(check_stream);
+			//vl.mxs_check->eval();
+			//vl.mxs_check->sprin1(check_stream);
+			//const char* streamValue = check_stream->to_string();
+			//output = PyString_FromString(check_stream->to_string());
 		}
 		MXS_CATCHERRORS();
+		//outVal = NULL;
 	}
 
 	// Step 6: cleanup maxscript memory
 	MXS_CLEANUP();
-
+	//pop_value_locals();
 	return output;
 }
 

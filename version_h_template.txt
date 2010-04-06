@@ -11,8 +11,11 @@ version_h_template.txt: this is where version numbers should be
 	out version.h during a pre-build event.
 */
 
-#define BLURPYTHON_VERSION_NUM  0,8,0,$WCREV$
-#define BLURPYTHON_VERSION_STR "0,8,0,$WCREV$"
-#define BLURPYTHON_BUILDDATE "$WCNOW$"
+#define BLURPYTHON_VERSION_MAJOR  0
+#define BLURPYTHON_VERSION_MINOR  8
+#define BLURPYTHON_VERSION_PATCH  0
+#define BLURPYTHON_VERSION_REV    $WCREV$
+#define BLURPYTHON_VERSION_STR    "0,8,0,$WCREV$"
+#define BLURPYTHON_BUILDDATE      "$WCNOW$"
 
 
