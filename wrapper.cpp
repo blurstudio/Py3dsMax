@@ -188,73 +188,65 @@ ValueWrapper_compare( PyObject* self, PyObject* other ) {
 // __getattr__ function: get a property by name from a Value* instance
 static PyObject*
 ValueWrapper_getattr( ValueWrapper* self, char* key ) {
-	// Step 1: protect maxscript memory
-	init_thread_locals();
-	three_value_locals( mxs_key, mxs_check, mxs_result );
-	save_current_frames();
+    // Step 1: protect maxscript memory
+    MXS_PROTECT( three_value_locals( mxs_key, mxs_check, mxs_result ) );
 
-	// Step 2: setup the nested parameter lookup option
-	ValueWrapper*	wrapper		= self;
-	std::string		propname	=  std::string( key );
+    // initialize the data
+    vl.mxs_result    = NULL;
+    vl.mxs_key        = Name::intern( key );
+	std::string propname = std::string( key );
+    MXS_EVAL( self->mValue, vl.mxs_check );
 
-	// Step 3: loop through the parent hieararchy looking for nested parameters
-	bool success = false;
-	while ( wrapper ) {
-		// Step 4: evaluate the current wrappers level
-		vl.mxs_key	= Name::intern( (char*) propname.c_str() );
-		MXS_EVAL( wrapper->mValue, vl.mxs_check );
+    // Step 2: try to pull the value recursively with a parent
+    bool success = false;
+    if ( self->mParent ) {
+        try {
+            vl.mxs_result = vl.mxs_check->_get_property( vl.mxs_key );
+            success = true;
+        }
+        MXS_CATCHERRORS();
+       
+        // Step 3: try to pull the value from the parent on fail
+        if ( !success ) {
+            propname.insert( 0, "." );
+            propname.insert( 0, self->mPropName );
 
-		// Step 5: try to pull the value from the current level
-		if ( key[0] == "_"[0] || ((ValueWrapper*) wrapper)->mParent ) {
-			try { 
-				vl.mxs_result = vl.mxs_check->_get_property( vl.mxs_key ); 
-				success = true;
-			}
-			MXS_CATCHERRORS();
+            MXS_CLEANUP();
 
-			// Step 6: update the propname
-			if ( !success ) {
-				propname.insert( 0, "." );
-				propname.insert( 0, wrapper->mPropName );
-				wrapper = (ValueWrapper*) wrapper->mParent;
-			}
-			else { wrapper = NULL; }
-		}
-		// Step 7: end of the road check
-		else {
-			try {
-				//ValueMetaClass* tempTag = wrapper->mValue->tag;
-				vl.mxs_result = vl.mxs_check->_get_property( vl.mxs_key );
-				//wrapper->mValue->tag = tempTag;
-				success = true;
-			}
-			PY_CATCHMXSERROR();
+            return ValueWrapper_getattr( (ValueWrapper*) self->mParent, (char*)propname.c_str() );
+        }
+    }
 
-			wrapper = NULL;
-		}
-	}
+    // Step 4:
+    else {
+        try {
+            vl.mxs_result = vl.mxs_check->_get_property( vl.mxs_key );
+            success = true;
+        }
+        PY_CATCHMXSERROR();
+    }
 
-	// Step 8: convert the result to a python variable
-	PyObject* output = NULL;
-	if ( success ) {
-		output = ObjectWrapper::py_intern( vl.mxs_result );
+    // Step 8: convert the result to a python variable
+    PyObject* output = NULL;
+    if ( success ) {
+        output = ObjectWrapper::py_intern( vl.mxs_result );
 
-		// Step 9: store nested parameters
-		if ( ObjectWrapper::is_wrapper( output ) ) {
-			Py_INCREF( self );
-			((ValueWrapper*) output)->mParent = (PyObject*) self;
-			((ValueWrapper*) output)->mPropName = key;
-		}
-	}
-	else { PyErr_SetString( PyExc_AttributeError, propname.c_str() ); }
+        // Step 9: store nested parameters
+        if ( ObjectWrapper::is_wrapper( output ) ) {
+            Py_INCREF( self );
+            ((ValueWrapper*) output)->mParent = (PyObject*) self;
+            ((ValueWrapper*) output)->mPropName = key;
+        }
+    }
+    else { PyErr_SetString( PyExc_AttributeError, propname.c_str() ); }
 
-	// Step 10: cleanup maxscript memory
-	//MXS_CLEANUP();
-	//pop_alloc_frame();
-	pop_value_locals();
-	
-	return output;
+    // Step 10: cleanup maxscript memory
+    MXS_CLEANUP();
+
+    return output;
 }
+
+
 
 // __setattr__ function: sets a property by name for a Value*
 static int
