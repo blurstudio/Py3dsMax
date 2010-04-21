@@ -31,7 +31,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)version_h_template.txt $(SolutionDir)version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -112,7 +112,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)version_h_template.txt $(SolutionDir)version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -193,7 +193,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)version_h_template.txt $(SolutionDir)version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -278,7 +278,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)version_h_template.txt $(SolutionDir)version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -341,7 +341,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)version_h_template.txt $(SolutionDir)version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -422,7 +422,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)\blurPython.rct $(SolutionDir)\blurPython.rc"
+				CommandLine="subwcrev $(SolutionDir) $(SolutionDir)version_h_template.txt $(SolutionDir)version.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -551,11 +551,11 @@
 			>
 		</File>
 		<File
-			RelativePath=".\blurPython.rct"
+			RelativePath=".\resource.h"
 			>
 		</File>
 		<File
-			RelativePath=".\resource.h"
+			RelativePath=".\version_h_template.txt"
 			>
 		</File>
 	</Files>
