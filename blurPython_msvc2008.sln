@@ -9,6 +9,8 @@ Global
 		Debug|x64 = Debug|x64
 		Max2010_Python24|Win32 = Max2010_Python24|Win32
 		Max2010_Python24|x64 = Max2010_Python24|x64
+		Max2010x64_Python26_hybrid|Win32 = Max2010x64_Python26_hybrid|Win32
+		Max2010x64_Python26_hybrid|x64 = Max2010x64_Python26_hybrid|x64
 		Max2010x64_Python26|Win32 = Max2010x64_Python26|Win32
 		Max2010x64_Python26|x64 = Max2010x64_Python26|x64
 	EndGlobalSection
@@ -19,6 +21,8 @@ Global
 		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Max2010_Python24|Win32.ActiveCfg = Max2010_Python24|Win32
 		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Max2010_Python24|Win32.Build.0 = Max2010_Python24|Win32
 		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Max2010_Python24|x64.ActiveCfg = Max2010_Python24|Win32
+		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Max2010x64_Python26_hybrid|Win32.ActiveCfg = Max2010x64_Python26_hybrid|Win32
+		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Max2010x64_Python26_hybrid|x64.ActiveCfg = Max2010x64_Python26_hybrid|x64
 		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Max2010x64_Python26|Win32.ActiveCfg = Max2010x64_Python26|Win32
 		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Max2010x64_Python26|Win32.Build.0 = Max2010x64_Python26|Win32
 		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Max2010x64_Python26|x64.ActiveCfg = Max2010x64_Python26|x64
