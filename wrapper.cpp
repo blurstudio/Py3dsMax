@@ -1093,7 +1093,7 @@ ObjectWrapper::intern( PyObject* obj ) {
 		return ( obj == Py_True ) ? &true_value : &false_value;
 
 	// Step 7: convert lists/tuples
-	else if ( obj->ob_type == &PyList_Type || obj->ob_type == &PyTuple_Type ) {
+/*	else if ( obj->ob_type == &PyList_Type || obj->ob_type == &PyTuple_Type ) {
 		int count	= PyObject_Length(obj);
 
 		// Step 8: create a maxscript array of items
@@ -1112,7 +1112,7 @@ ObjectWrapper::intern( PyObject* obj ) {
 		}
 
 		return out;
-	}
+	} */
 
 	// Step 12: create a ObjectWrapper instance
 	return new ObjectWrapper( obj );
@@ -1183,7 +1183,7 @@ ObjectWrapper::py_intern( Value* val ) {
 	}
 
 	// Step 9: check for all collections (except bitarrays)
-	else if ( is_collection( mxs_check ) && !is_bitarray( mxs_check ) && !( mxs_check ) ) {
+	else if ( is_collection( mxs_check ) && !is_bitarray( mxs_check ) ) {
 		// Step 10: grab the collection's count
 		int count = mxs_check->_get_property( n_count )->to_int();
 		
