@@ -11,6 +11,7 @@
 
 #include "imports.h"
 #include "maxscrpt.h"
+#include "value.h"
 
 #include <list>
 

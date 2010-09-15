@@ -48,7 +48,7 @@
 				Optimization="2"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="c:\max_sdk\max10\include\maxscrpt;c:\max_sdk\max10\include;C:\Python24\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;MAKE_PY26_COMPAT"
 				StringPooling="false"
 				BasicRuntimeChecks="0"
 				RuntimeLibrary="2"
@@ -81,6 +81,76 @@
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				TargetMachine="1"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Max9-10x64_Python26|Win32"
+			OutputDirectory="$(SolutionDir)bin\$(PlatformName)\$(ConfigurationName)"
+			IntermediateDirectory="$(SolutionDir)build\$(PlatformName)\$(ConfigurationName)"
+			ConfigurationType="2"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				WholeProgramOptimization="true"
+				AdditionalIncludeDirectories="c:\max_sdk\max10\include\maxscrpt;c:\max_sdk\max10\include;C:\Python26_64\include"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL"
+				WarningLevel="3"
+				Detect64BitPortabilityProblems="true"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				ShowProgress="2"
+				OutputFile="$(OutDir)\blurPython26.dlx"
+				LinkIncremental="1"
+				AdditionalLibraryDirectories="C:\max_sdk\max10\x64\lib;C:\Python26_64\libs"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -157,76 +227,6 @@
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				TargetMachine="17"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Max9-10x64_Python26|Win32"
-			OutputDirectory="$(SolutionDir)bin\$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="$(SolutionDir)build\$(PlatformName)\$(ConfigurationName)"
-			ConfigurationType="2"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				WholeProgramOptimization="true"
-				AdditionalIncludeDirectories="c:\max_sdk\max10\include\maxscrpt;c:\max_sdk\max10\include;C:\Python26_64\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL"
-				WarningLevel="3"
-				Detect64BitPortabilityProblems="true"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				ShowProgress="2"
-				OutputFile="$(OutDir)\blurPython26.dlx"
-				LinkIncremental="1"
-				AdditionalLibraryDirectories="C:\max_sdk\max10\x64\lib;C:\Python26_64\libs"
 			/>
 			<Tool
 				Name="VCALinkTool"

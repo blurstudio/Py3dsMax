@@ -35,8 +35,6 @@ typedef	intargfunc		ssizeargfunc;
 typedef struct {
 	PyObject_HEAD
 	Value*		mValue;		// Pointer to the MAXScript Value
-	PyObject*	mParent;	// Pointer to Value properties wrapper parent
-	char*		mPropName;	// Name of the nested property
 } ValueWrapper;
 
 // ctor
@@ -45,8 +43,6 @@ ValueWrapper_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
 	ValueWrapper* self;
 	self = (ValueWrapper*)type->tp_alloc(type, 0);
 	self->mValue	= NULL;
-	self->mParent	= NULL;
-	self->mPropName	= "";
 	return (PyObject*) self;
 }
 
@@ -54,13 +50,10 @@ ValueWrapper_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
 static void
 ValueWrapper_dealloc( ValueWrapper* self ) {
 	// Step 1: unprotect the value
-	Protector::unprotect( (PyObject*) self );
-
-	// Step 2: dereference the parent pointer
-	Py_XDECREF( self->mParent );
+	//Protector::unprotect( (PyObject*) self );
+	if ( self->mValue ) { self->mValue->make_collectable(); }
 
 	// Step 3: clear the pointers
-	self->mParent	= NULL;
 	self->mValue	= NULL;
 
 	// Step 4: fre the python memory
@@ -185,130 +178,6 @@ ValueWrapper_compare( PyObject* self, PyObject* other ) {
 	return result;
 }
 
-// __getattr__ function: get a property by name from a Value* instance
-static PyObject*
-ValueWrapper_getattr( ValueWrapper* self, char* key ) {
-	// Step 1: protect maxscript memory
-	init_thread_locals();
-	three_value_locals( mxs_key, mxs_check, mxs_result );
-	save_current_frames();
-
-	// Step 2: setup the nested parameter lookup option
-	ValueWrapper*	wrapper		= self;
-	std::string		propname	=  std::string( key );
-
-	// Step 3: loop through the parent hieararchy looking for nested parameters
-	bool success = false;
-	while ( wrapper ) {
-		// Step 4: evaluate the current wrappers level
-		vl.mxs_key	= Name::intern( (char*) propname.c_str() );
-		MXS_EVAL( wrapper->mValue, vl.mxs_check );
-
-		// Step 5: try to pull the value from the current level
-		if ( key[0] == "_"[0] || ((ValueWrapper*) wrapper)->mParent ) {
-			try { 
-				vl.mxs_result = vl.mxs_check->_get_property( vl.mxs_key ); 
-				success = true;
-			}
-			MXS_CATCHERRORS();
-
-			// Step 6: update the propname
-			if ( !success ) {
-				propname.insert( 0, "." );
-				propname.insert( 0, wrapper->mPropName );
-				wrapper = (ValueWrapper*) wrapper->mParent;
-			}
-			else { wrapper = NULL; }
-		}
-		// Step 7: end of the road check
-		else {
-			try {
-				//ValueMetaClass* tempTag = wrapper->mValue->tag;
-				vl.mxs_result = vl.mxs_check->_get_property( vl.mxs_key );
-				//wrapper->mValue->tag = tempTag;
-				success = true;
-			}
-			PY_CATCHMXSERROR();
-
-			wrapper = NULL;
-		}
-	}
-
-	// Step 8: convert the result to a python variable
-	PyObject* output = NULL;
-	if ( success ) {
-		output = ObjectWrapper::py_intern( vl.mxs_result );
-
-		// Step 9: store nested parameters
-		if ( ObjectWrapper::is_wrapper( output ) ) {
-			Py_INCREF( self );
-			((ValueWrapper*) output)->mParent = (PyObject*) self;
-			((ValueWrapper*) output)->mPropName = key;
-		}
-	}
-	else { PyErr_SetString( PyExc_AttributeError, propname.c_str() ); }
-
-	// Step 10: cleanup maxscript memory
-	//MXS_CLEANUP();
-	//pop_alloc_frame();
-	pop_value_locals();
-	
-	return output;
-}
-
-// __setattr__ function: sets a property by name for a Value*
-static int
-ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
-	// Step 1: protect the maxscript memory
-	MXS_PROTECT( four_value_locals( mxs_key, mxs_check, mxs_result, mxs_value ) );
-
-	// Step 2: setup nested parameter lookup option
-	ValueWrapper*	wrapper		= self;
-	std::string		propname	= std::string( key );
-
-	// Step 4: convert the inputed python value to a maxscript value
-	int result = 1;
-	while ( wrapper ) {
-		// Step 4: evaluate the current wrappers level
-		vl.mxs_key		= Name::intern( (char*) propname.c_str() );
-		vl.mxs_check	= wrapper->mValue;
-
-		// Step 6: check to see if this item can be accessed via the parent
-		if ( ((ValueWrapper*) wrapper)->mParent ) {
-			try {
-				vl.mxs_check->_set_property( vl.mxs_key, ObjectWrapper::intern(value) );
-				result = 0;
-			}
-			MXS_CATCHERRORS();
-
-			// Step 7: Check to see if the above operation was successful, if it was, exit out of the loop
-			if ( result == 0 ) {
-				wrapper = NULL;
-			}
-			// Step 8: Otherwise, update the keystring and try the parent
-			else {
-				propname.insert( 0, "." );
-				propname.insert( 0, wrapper->mPropName );
-				wrapper = (ValueWrapper*) ((ValueWrapper*) wrapper)->mParent;
-			}
-		}
-		// Step 9: if there is no parent, it is the end of the line for this test
-		else {
-			try {
-				vl.mxs_check->_set_property( vl.mxs_key, ObjectWrapper::intern(value) );
-				result = 0;
-			}
-			PY_CATCHMXSERROR();
-
-			wrapper = NULL; // regardless, this will cause the wrapper to be NULL
-		}
-	}
-
-	MXS_CLEANUP();
-
-	return result;
-}
-
 // __str__ function: convert a Value* wrapper to a string
 static PyObject*
 ValueWrapper_str( ValueWrapper* self ) {
@@ -355,6 +224,54 @@ ValueWrapper_str( ValueWrapper* self ) {
 	return output;
 }
 
+// __getattr__ function: get a property by name from a Value* instance
+static PyObject*
+ValueWrapper_getattr( ValueWrapper* self, char* key ) {
+	// check for pre-defined python properties
+	PyObject* tmp;
+	PyObject* check = PyString_FromString(key);
+	if ( !(tmp = PyObject_GenericGetAttr( (PyObject*) self, check )) ) {
+		Py_XDECREF(check);
+
+		// check for python internals
+		if ( key[0] == '_' || !PyErr_ExceptionMatches(PyExc_AttributeError) ) {
+			return NULL;
+		}
+		PyErr_Clear();
+	}
+	else {
+		Py_XDECREF(check);
+		return tmp;
+	}
+
+	// return the default maxscript value
+	Value* output = NULL;
+	try {
+		output = ((ValueWrapper*) self)->mValue->_get_property( Name::intern(key) );
+	}
+	catch ( ... ) {
+		PyErr_SetString( PyExc_AttributeError, TSTR(key) + " is not a member of " + PyString_AsString(ValueWrapper_str(self)) );
+		return NULL;
+	}
+	return ObjectWrapper::py_intern( output );
+}
+
+// __setattr__ function: sets a property by name for a Value*
+static int
+ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
+	bool success = true;
+	try { ((ValueWrapper*) self)->mValue->_set_property( Name::intern(key), ObjectWrapper::intern(value) ); }
+	catch ( ... ) { success = false; }
+
+	if ( success ) {
+		return 0;
+	}
+	else {
+		PyErr_SetString( PyExc_AttributeError, TSTR(key) + " is not a member of " + PyString_AsString(ValueWrapper_str(self)) );
+		return 1;
+	}
+}
+
 //------- Sequence Methods
 
 // __len__ function: calculate the length of a maxscript value
@@ -364,7 +281,7 @@ ValueWrapper_length( PyObject* self ) {
 	MXS_PROTECT( one_value_local( mxs_check ) );
 
 	// Step 2: evaluate the value
-	MXS_EVAL( ((ValueWrapper*) self)->mValue, vl.mxs_check );
+	MXS_EVAL( ((ValueWrapper*) (self))->mValue, vl.mxs_check );
 
 	int count = NULL;
 
@@ -381,11 +298,28 @@ ValueWrapper_length( PyObject* self ) {
 // __getitem__ function: get an item from an index in a maxscript value
 static PyObject*
 ValueWrapper_item( PyObject* self, int index ) {
+	MXS_PROTECT( one_value_local( mxs_check ) );
+	MXS_EVAL( ((ValueWrapper*) self)->mValue, vl.mxs_check );
+
+	Value* result = NULL;
+	Value* mindex = Integer::intern( index + 1 );
+	try { result = vl.mxs_check->get_vf( &mindex, 1 ); }
+	MXS_CATCHERRORS();
+
+	PyObject* output = NULL;
+	if ( !result ) { PyErr_SetString( PyExc_IndexError, "__getitem__ index is out of range" ); }
+	else { output = ObjectWrapper::py_intern(result); }
+
+	MXS_CLEANUP();
+
+	return output;
+
+	/*
 	// Step 1: protect the maxscript memory
 	MXS_PROTECT( three_value_locals( mxs_index, mxs_check, mxs_result ) );
 
 	// Step 2: evaluate the value
-	MXS_EVAL( ((ValueWrapper*) self)->mValue, vl.mxs_check );
+	MXS_EVAL( ((ValueWrapper*) (self))->mValue, vl.mxs_check );
 
 	// Step 3: determine the number of items in our maxscript value
 	int count = 0;
@@ -417,7 +351,7 @@ ValueWrapper_item( PyObject* self, int index ) {
 	// Step 10: cleanup maxscript memory
 	MXS_CLEANUP();
 
-	return output;
+	return output; */
 }
 
 // __getitem__ function: get an item based on an abstract python object
@@ -432,7 +366,7 @@ ValueWrapper_objitem( PyObject* self, PyObject* key ) {
 	MXS_PROTECT( three_value_locals( mxs_index, mxs_check, mxs_result ) );
 
 	// Step 3: evaluate the value
-	MXS_EVAL( ((ValueWrapper*) self)->mValue, vl.mxs_check );
+	MXS_EVAL( ((ValueWrapper*) (self))->mValue, vl.mxs_check );
 
 	// Step 4: convert the python object to a maxscript key
 	vl.mxs_index = ObjectWrapper::intern( key );
@@ -459,7 +393,7 @@ ValueWrapper_setitem( PyObject* self, int index, PyObject* value ) {
 	MXS_PROTECT( two_value_locals( mxs_check, mxs_result ) );
 
 	// Step 2: evaluate the value
-	MXS_EVAL( ((ValueWrapper*) self)->mValue, vl.mxs_check );
+	MXS_EVAL( ((ValueWrapper*) (self))->mValue, vl.mxs_check );
 
 	// Step 3: calculate the length of the sequence
 	int count = 0;
@@ -509,7 +443,7 @@ ValueWrapper_setobjitem( PyObject* self, PyObject* key, PyObject* value ) {
 	MXS_PROTECT( one_value_local( mxs_check ) );
 
 	// Step 3: evaluate the value
-	MXS_EVAL( ((ValueWrapper*) self)->mValue, vl.mxs_check );
+	MXS_EVAL( ((ValueWrapper*) (self))->mValue, vl.mxs_check );
 
 	// Step 4: create a volatile maxscript value array to pass to the put virtual function
 	Value** arg_list;
@@ -751,8 +685,57 @@ ValueWrapper_nonzero( PyObject* self ){
 	return true;
 }
 
+// create custom methods
+static PyObject*
+ValueWrapper_property( PyObject* self, PyObject* args ) {
+	char* propName;
+	
+	if ( !PyArg_ParseTuple( args, "s", &propName ) )
+		return NULL;
+
+	Value* result = NULL;
+	try { result = ((ValueWrapper*) self)->mValue->_get_property( Name::intern(propName) ); }
+	catch ( ... ) { PyErr_SetString( PyExc_AttributeError, TSTR(propName) + " is not a property of " + PyString_AsString( ValueWrapper_str( (ValueWrapper*) self ) ) ); }
+
+	if ( result ) {
+		return ObjectWrapper::py_intern( result );
+	}
+	return NULL;
+}
+
+static PyObject*
+ValueWrapper_setProperty( PyObject* self, PyObject* args ) {
+	char* propName;
+	PyObject* propValue;
+
+	if ( !PyArg_ParseTuple( args, "sO", &propName, &propValue ) )
+		return NULL;
+
+	bool success = true;
+	try { ((ValueWrapper*) self)->mValue->_set_property( Name::intern(propName), ObjectWrapper::intern(propValue) ); }
+	catch ( ... ) { success = false; }
+
+	if ( success ) {
+		Py_INCREF(Py_True);
+		return Py_True;
+	}
+	else {
+		Py_INCREF(Py_False);
+		return Py_False;
+	}
+}
+
 //--------------------------------------------------------------
 // create the python mappings
+
+// define the custom methods for a wrapper
+static PyMethodDef ValueWrapper_methods[] = {
+	// windows methods
+	{ "property",			(PyCFunction)ValueWrapper_property,			METH_VARARGS,	"Get a property from a MXS wrapper" },
+	{ "setProperty",		(PyCFunction)ValueWrapper_setProperty,		METH_VARARGS,	"Set a property from a MXS wrapper" },
+	{ NULL, NULL, 0, NULL }
+};
+
 
 // sequence methods
 static PySequenceMethods proxy_as_sequence = {
@@ -835,7 +818,7 @@ static PyTypeObject ValueWrapperType = {
     0,																	// tp_getattro
     0,																	// tp_setattro
     0,																	// tp_as_buffer
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES,	// tp_flags
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES | Py_TPFLAGS_HAVE_CLASS,	// tp_flags
     "Maxscript Value Wrapper",											// tp_doc 
     0,																	// tp_traverse 
     0,																	// tp_clear 
@@ -843,7 +826,7 @@ static PyTypeObject ValueWrapperType = {
     0,																	// tp_weaklistoffset 
     0,																	// tp_iter 
     0,																	// tp_iternext 
-    0,																	// tp_methods 
+    ValueWrapper_methods,												// tp_methods 
     0,																	// tp_members 
     0,																	// tp_getset 
     0,																	// tp_base 
@@ -1073,12 +1056,19 @@ ObjectWrapper::intern( PyObject* obj ) {
 		return &undefined;
 
 	// Step 2: convert ValueWrapper instances
-	else if ( obj->ob_type == &ValueWrapperType )
-		return ((ValueWrapper*) obj)->mValue;
+	else if ( obj->ob_type == &ValueWrapperType ) {
+		// return a duplicate of this value wrapper's value
+		one_value_local(output);
+		vl.output = ((ValueWrapper*) (obj))->mValue->eval();
+		return_value(vl.output);
+	}
 
 	// Step 3: convert strings/unicodes
-	else if ( obj->ob_type == &PyString_Type || obj->ob_type == &PyUnicode_Type )
-		return new String( PyString_AsString( obj ) );
+	else if ( obj->ob_type == &PyString_Type || obj->ob_type == &PyUnicode_Type ) {
+		one_value_local(output);
+		vl.output = new String(PyString_AsString( obj ));
+		return_value(vl.output);
+	}
 
 	// Step 4: convert integers/longs
 	else if ( obj->ob_type == &PyInt_Type || obj->ob_type == &PyLong_Type )
@@ -1127,9 +1117,7 @@ ObjectWrapper::init() {
 // gc_protect function: calls the gc_trace on a ValueWrapper instance
 void
 ObjectWrapper::gc_protect( PyObject* obj ) {
-	if ( obj->ob_type == &ValueWrapperType ) {
-		((ValueWrapper*) obj)->mValue->gc_trace();
-	}
+	((ValueWrapper*) (obj))->mValue->gc_trace();
 }
 
 // is_wrapper function: checks the type of the object to make sure its a ValueWrapper
@@ -1182,8 +1170,8 @@ ObjectWrapper::py_intern( Value* val ) {
 		return Py_False;
 	}
 
-	// Step 9: check for all collections (except bitarrays)
-	else if ( is_collection( mxs_check ) && !is_bitarray( mxs_check ) ) {
+	// Step 9: check for all collections (except bitarrays & modifier arrays)
+	else if ( is_collection( mxs_check ) && !(is_bitarray( mxs_check ) || is_maxmodifierarray( mxs_check )) ) {
 		// Step 10: grab the collection's count
 		int count = mxs_check->_get_property( n_count )->to_int();
 		
@@ -1204,10 +1192,10 @@ ObjectWrapper::py_intern( Value* val ) {
 	PyObject* output = ValueWrapper_new( &ValueWrapperType, NULL, NULL );
 
 	// add the ValueWrapper to the protector
-	Protector::protect( output );
+	//Protector::protect( output );
 
 	// protect the value from garbage collection
-	((ValueWrapper*) output)->mValue = val->eval();
+	((ValueWrapper*) (output))->mValue = val->eval()->make_heap_permanent();
 
 	return output;
 }
