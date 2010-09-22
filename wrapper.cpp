@@ -1083,11 +1083,12 @@ ObjectWrapper::intern( PyObject* obj ) {
 		return ( obj == Py_True ) ? &true_value : &false_value;
 
 	// Step 7: convert lists/tuples
-/*	else if ( obj->ob_type == &PyList_Type || obj->ob_type == &PyTuple_Type ) {
+	else if ( obj->ob_type == &PyList_Type || obj->ob_type == &PyTuple_Type ) {
 		int count	= PyObject_Length(obj);
 
 		// Step 8: create a maxscript array of items
-		Array* out	= new Array(count);
+		one_typed_value_local(Array* output);
+		vl.output = new Array(count);
 		
 		PyObject* temp;
 		for ( int i = 0; i < count; i++ ) {
@@ -1095,14 +1096,14 @@ ObjectWrapper::intern( PyObject* obj ) {
 			temp = PySequence_GetItem( obj, i );
 
 			// Step 10: insert the item into maxscript
-			out->append( ObjectWrapper::intern( temp ) );
+			vl.output->append( ObjectWrapper::intern( temp ) );
 
 			// Step 11: free the python memory
 			Py_XDECREF( temp );
 		}
 
-		return out;
-	} */
+		return_value(vl.output);
+	}
 
 	// Step 12: create a ObjectWrapper instance
 	return new ObjectWrapper( obj );
