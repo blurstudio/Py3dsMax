@@ -15,7 +15,6 @@
 
 // blurPython imports
 #include "macros.h"
-#include "protector.h"
 #include "wrapper.h"
 
 // define the mxs class
@@ -311,9 +310,6 @@ static PyMethodDef module_methods[] = {
 // initialize the plugin
 PyMODINIT_FUNC
 init_module(void) {
-	// Step 0: initialize the protector
-	Protector::init();
-
 	// Step 1: initialize python
 	Py_Initialize();
 

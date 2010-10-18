@@ -14,7 +14,6 @@
 #include <string>
 
 #include "macros.h"
-#include "protector.h"
 #include "wrapper.h"
 
 #include "Parser.h"  // for print functions
@@ -50,7 +49,6 @@ ValueWrapper_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
 static void
 ValueWrapper_dealloc( ValueWrapper* self ) {
 	// Step 1: unprotect the value
-	//Protector::unprotect( (PyObject*) self );
 	if ( self->mValue ) { self->mValue->make_collectable(); }
 
 	// Step 3: clear the pointers
@@ -1105,8 +1103,11 @@ ObjectWrapper::intern( PyObject* obj ) {
 		return_value(vl.output);
 	}
 
-	// Step 12: create a ObjectWrapper instance
-	return new ObjectWrapper( obj );
+	else {
+
+		// Step 12: create a ObjectWrapper instance
+		return new ObjectWrapper( obj );
+	}
 }
 
 // initialize function: Initializes the PyObject* class
@@ -1191,9 +1192,6 @@ ObjectWrapper::py_intern( Value* val ) {
 
 	// Step 13: create a new ValueWrapper instance
 	PyObject* output = ValueWrapper_new( &ValueWrapperType, NULL, NULL );
-
-	// add the ValueWrapper to the protector
-	//Protector::protect( output );
 
 	// protect the value from garbage collection
 	((ValueWrapper*) (output))->mValue = val->eval()->make_heap_permanent();
