@@ -16,6 +16,7 @@
 // blurPython imports
 #include "macros.h"
 #include "wrapper.h"
+#include "protector.h"
 
 // define the mxs class
 typedef struct {
@@ -227,6 +228,83 @@ studiomax_undoOff( PyObject* self, PyObject* args ) {
 	return Py_True;
 }
 
+static bool file_in( CharStream* source, CharStream* log ) {
+	init_thread_locals();
+	push_alloc_frame();
+	three_typed_value_locals(Parser* parser, Value* code, Value* result);
+	save_current_frames();
+	disable_trace_back = FALSE;
+	trace_back_active = TRUE;
+	trace_back_levels = 10;
+
+	CharStream* out = thread_local(current_stdout);
+
+	// loop through stream compiling & evaluating all expressions
+	try {
+		// make a new compiler instance
+		vl.parser = new Parser(out);
+		source->flush_whitespace();
+		while (!source->at_eos() || vl.parser->back_tracked) {
+			vl.code		= vl.parser->compile(source);
+			vl.result	= vl.code->eval();
+			source->flush_whitespace();
+		}
+		if ( vl.parser->expr_level != 0 || vl.parser->back_tracked && vl.parser->token != t_end )
+			throw;
+
+		source->close();
+	}
+	catch (...) {
+		// catch any errors and tell what file we are in if any
+		out->puts("Unknown MAXScript Error occurred Occurred: ");
+		source->sprin1(out);
+		source->close();
+		out->puts( "\n" );
+		pop_alloc_frame();
+		pop_value_locals();
+		return false;
+	}
+
+	pop_alloc_frame();
+	pop_value_locals();
+	return true;
+}
+
+// Py3dsMax.runMaxscript
+static PyObject*
+studiomax_runMaxscript( PyObject* self, PyObject* args ) {
+	char* fname;
+	
+	if ( !PyArg_ParseTuple( args, "s", &fname ) )
+		return NULL;
+
+	// pick up arguments
+	two_typed_value_locals(FileStream* file, StringStream* log );
+
+	vl.log = new StringStream();
+	
+	// open a fileStream instance on the file
+	vl.file = (new FileStream)->open( fname, "rt");
+	if (vl.file == (FileStream*)&undefined) {
+		PyErr_SetString( PyExc_RuntimeError, (TSTR("Py3dsMax.runMaxscript(filename): cannot open file - ") + fname) );
+		pop_value_locals();
+		return NULL;
+	}
+
+	// run using the stream-based filein utility
+	PyObject* out = NULL;
+	if ( !file_in( vl.file, vl.log ) ) {
+		PyErr_SetString( PyExc_RuntimeError, vl.log->to_string() );
+	}
+	else {
+		Py_INCREF(Py_True);
+		out = Py_True;
+	}
+
+	pop_value_locals();
+	return out;
+}
+
 // Py3dsMax.getVisController() - get the visibility controller of a node
 static PyObject*
 studiomax_getVisController( PyObject* self, PyObject* args ) {
@@ -299,6 +377,7 @@ static PyMethodDef module_methods[] = {
 	{ "setVisController",	(PyCFunction)studiomax_setVisController,	METH_VARARGS,	"Set a nodes visibility controller" },
 
 	// python methods
+	{ "runMaxscript",		(PyCFunction)studiomax_runMaxscript,		METH_VARARGS,	"Runs a maxscript file for proper error checking" },
 	{ "runScript",			(PyCFunction)studiomax_runScript,           METH_VARARGS,   "Runs a python file in our global scope." },
 
 	// Version Functions
@@ -317,6 +396,8 @@ init_module(void) {
 	if ( PyType_Ready(&MxsType) < 0 ) {
 		return;
 	}
+
+	Protector::init();
 
 	// Step 3: make sure the object wrapper is running
 	if ( !ObjectWrapper::init() ) {

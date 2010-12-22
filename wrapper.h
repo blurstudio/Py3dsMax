@@ -48,8 +48,10 @@ public:
 	// objectwrapper static methods
 	static Value*		intern( PyObject* obj );
 	static bool			init();
+	static void			handleMaxscriptError();
 	static void			gc_protect( PyObject* obj );
 	static bool			is_wrapper( PyObject* obj );
+	static void			log(		PyObject* obj );
 	static PyObject*	py_intern( Value* val );
 };
 

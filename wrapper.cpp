@@ -15,6 +15,7 @@
 
 #include "macros.h"
 #include "wrapper.h"
+#include "protector.h"
 
 #include "Parser.h"  // for print functions
 
@@ -33,7 +34,8 @@ typedef	intargfunc		ssizeargfunc;
 //---------------------------------------------------------------
 typedef struct {
 	PyObject_HEAD
-	Value*		mValue;		// Pointer to the MAXScript Value
+	Value*		mValue;			// Pointer to the MAXScript Value
+	bool		mCollectable;
 } ValueWrapper;
 
 // ctor
@@ -41,7 +43,8 @@ static PyObject*
 ValueWrapper_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
 	ValueWrapper* self;
 	self = (ValueWrapper*)type->tp_alloc(type, 0);
-	self->mValue	= NULL;
+	self->mValue		= NULL;
+	self->mCollectable	= true;
 	return (PyObject*) self;
 }
 
@@ -49,7 +52,10 @@ ValueWrapper_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
 static void
 ValueWrapper_dealloc( ValueWrapper* self ) {
 	// Step 1: unprotect the value
-	if ( self->mValue ) { self->mValue->make_collectable(); }
+//	if ( self->mValue && self->mCollectable ) {
+//		self->mValue->make_collectable();			// mark this item as collectable
+//	}
+	Protector::unprotect( (PyObject*) self );
 
 	// Step 3: clear the pointers
 	self->mValue	= NULL;
@@ -67,10 +73,15 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 	int mxs_count		= (key_count == -1) ? arg_count : arg_count + 1 + (key_count*2);
 
 	// Step 2: protect the maxcript memory we are going to use
-	MXS_PROTECT( two_value_locals( method, result ) );
+	MXS_PROTECT( three_typed_value_locals( Value* method, Value* result, StringStream* log ) );
 
 	// Step 3: pull out the proper method from maxscript
 	MXS_EVAL( self->mValue, vl.method );
+
+	// override the current log for error catching purposes
+	vl.log	= new StringStream();
+	CharStream* old_log = thread_local(current_stdout);
+	((MAXScript_TLS*)TlsGetValue(thread_locals_index))->current_stdout = vl.log;
 
 	vl.result = NULL;
 
@@ -112,7 +123,7 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 			try { vl.result = vl.method->apply( mxs_args, mxs_count ); }
 			catch ( ... ) {
 				MXS_CLEARERRORS();
-				PyErr_SetString( PyExc_Exception, "MAXScript error during function call (using args)." );
+				PyErr_SetString( PyExc_RuntimeError, vl.log->to_string() );
 				vl.result = NULL;
 			}
 
@@ -124,10 +135,14 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 			try { vl.result = vl.method->apply( NULL, 0 ); }
 			catch ( ... ) {
 				MXS_CLEARERRORS();
-				PyErr_SetString( PyExc_Exception, "MAXScript error during function call (no args)." );
+				PyErr_SetString( PyExc_RuntimeError, vl.log->to_string() );
+				vl.result = NULL;
 			}
 		}
 	}
+
+	// restore the old log
+	((MAXScript_TLS*)TlsGetValue(thread_locals_index))->current_stdout = old_log;
 
 	// Step 10: convert the result
 	PyObject* output = NULL;
@@ -245,7 +260,7 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 	// return the default maxscript value
 	Value* output = NULL;
 	try {
-		output = ((ValueWrapper*) self)->mValue->_get_property( Name::intern(key) );
+		output = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(key) );
 	}
 	catch ( ... ) {
 		PyErr_SetString( PyExc_AttributeError, TSTR(key) + " is not a member of " + PyString_AsString(ValueWrapper_str(self)) );
@@ -258,7 +273,7 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 static int
 ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
 	bool success = true;
-	try { ((ValueWrapper*) self)->mValue->_set_property( Name::intern(key), ObjectWrapper::intern(value) ); }
+	try { ((ValueWrapper*) self)->mValue->eval()->_set_property( Name::intern(key), ObjectWrapper::intern(value) ); }
 	catch ( ... ) { success = false; }
 
 	if ( success ) {
@@ -299,8 +314,32 @@ ValueWrapper_item( PyObject* self, int index ) {
 	MXS_PROTECT( one_value_local( mxs_check ) );
 	MXS_EVAL( ((ValueWrapper*) self)->mValue, vl.mxs_check );
 
+	int count = 0;
+
+	// pull the lenght of the collection
+	try { count = vl.mxs_check->_get_property( n_count )->to_int(); }
+	catch ( ... ) { 
+		PyErr_SetString( PyExc_IndexError, "__getitem__ cannot access item for index" ); 
+		MXS_CLEANUP();
+		return NULL;
+	}
+
+	// support pythonic negative lookup
+	if ( index < 0 ) {
+		index = count + index;
+	}
+
+	// make sure the index is valid
+	if ( !( 0 <= index && index < count) ) {
+		PyErr_SetString( PyExc_IndexError, "__getitem__ index is out of range" ); 
+		MXS_CLEANUP();
+		return NULL;
+	}
+
+	// pull the value
 	Value* result = NULL;
 	Value* mindex = Integer::intern( index + 1 );
+
 	try { result = vl.mxs_check->get_vf( &mindex, 1 ); }
 	MXS_CATCHERRORS();
 
@@ -311,45 +350,6 @@ ValueWrapper_item( PyObject* self, int index ) {
 	MXS_CLEANUP();
 
 	return output;
-
-	/*
-	// Step 1: protect the maxscript memory
-	MXS_PROTECT( three_value_locals( mxs_index, mxs_check, mxs_result ) );
-
-	// Step 2: evaluate the value
-	MXS_EVAL( ((ValueWrapper*) (self))->mValue, vl.mxs_check );
-
-	// Step 3: determine the number of items in our maxscript value
-	int count = 0;
-	try { count = vl.mxs_check->_get_property( n_count )->to_int(); }
-	MXS_CATCHERRORS();
-
-	// Step 4: if we have items to collect from, then continue
-	if ( count ) {
-		// Step 5: allow reverse lookups like python does
-		if ( index < 0 )
-			index += count;
-
-		// Step 6: make sure the index is within scope
-		if ( 0 <= index && index < count ) {
-			//Step 7: convert the index to a maxscript number (keep in mind that maxscript is 1 based, vs. python which is 0 based)
-			vl.mxs_index	= Integer::intern( index + 1 );
-
-			// Step 8: get the value from the item using value virtual functions
-			try { vl.mxs_result	= vl.mxs_check->get_vf( &vl.mxs_index, 1 ); }
-			MXS_CATCHERRORS();
-		}
-	}
-
-	// Step 9: convert the value to the output
-	PyObject* output = NULL;
-	if ( vl.mxs_result ) { output = ObjectWrapper::py_intern( vl.mxs_result ); }
-	else { PyErr_SetString( PyExc_IndexError, "__getitem__ index is out of range" ); }
-
-	// Step 10: cleanup maxscript memory
-	MXS_CLEANUP();
-
-	return output; */
 }
 
 // __getitem__ function: get an item based on an abstract python object
@@ -692,7 +692,7 @@ ValueWrapper_property( PyObject* self, PyObject* args ) {
 		return NULL;
 
 	Value* result = NULL;
-	try { result = ((ValueWrapper*) self)->mValue->_get_property( Name::intern(propName) ); }
+	try { result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(propName) ); }
 	catch ( ... ) { PyErr_SetString( PyExc_AttributeError, TSTR(propName) + " is not a property of " + PyString_AsString( ValueWrapper_str( (ValueWrapper*) self ) ) ); }
 
 	if ( result ) {
@@ -710,7 +710,7 @@ ValueWrapper_setProperty( PyObject* self, PyObject* args ) {
 		return NULL;
 
 	bool success = true;
-	try { ((ValueWrapper*) self)->mValue->_set_property( Name::intern(propName), ObjectWrapper::intern(propValue) ); }
+	try { ((ValueWrapper*) self)->mValue->eval()->_set_property( Name::intern(propName), ObjectWrapper::intern(propValue) ); }
 	catch ( ... ) { success = false; }
 
 	if ( success ) {
@@ -1056,9 +1056,10 @@ ObjectWrapper::intern( PyObject* obj ) {
 	// Step 2: convert ValueWrapper instances
 	else if ( obj->ob_type == &ValueWrapperType ) {
 		// return a duplicate of this value wrapper's value
-		one_value_local(output);
-		vl.output = ((ValueWrapper*) (obj))->mValue->eval();
-		return_value(vl.output);
+//		one_value_local(output);
+//		vl.output = ((ValueWrapper*) (obj))->mValue;
+//		return_protected(vl.output);
+		return ((ValueWrapper*) (obj))->mValue;		// already a protected value
 	}
 
 	// Step 3: convert strings/unicodes
@@ -1122,10 +1123,32 @@ ObjectWrapper::gc_protect( PyObject* obj ) {
 	((ValueWrapper*) (obj))->mValue->gc_trace();
 }
 
+void
+ObjectWrapper::log( PyObject* obj ) {
+	mprintf( "%s\n", PyString_AsString( ValueWrapper_str( (ValueWrapper*) obj ) ) );
+}
+
 // is_wrapper function: checks the type of the object to make sure its a ValueWrapper
 bool
 ObjectWrapper::is_wrapper( PyObject* obj ) {
 	return ( obj->ob_type == &ValueWrapperType ) ? true : false;
+}
+
+void
+ObjectWrapper::handleMaxscriptError() {
+	MAXScriptException* e = thread_local(current_exception);
+	// process the current exception
+	if ( e ) {
+		one_typed_value_local( StringStream* buffer );
+		vl.buffer = new StringStream( "MAXScript Error has occurred: \n" );
+		e->sprin1(vl.buffer);
+		PyErr_SetString( PyExc_RuntimeError, vl.buffer->to_string() );
+		pop_value_locals();
+	}
+	// set the exception to unknown
+	else {
+		PyErr_SetString( PyExc_RuntimeError, "An unknown MAXScript error has occurred" );
+	}
 }
 
 // py_intern function: converts a maxscript internal to a python internal
@@ -1189,13 +1212,21 @@ ObjectWrapper::py_intern( Value* val ) {
 
 		return output;
 	}
+	else {
+		// Step 13: create a new ValueWrapper instance
+		ValueWrapper* output = (ValueWrapper*) ValueWrapper_new( &ValueWrapperType, NULL, NULL );
 
-	// Step 13: create a new ValueWrapper instance
-	PyObject* output = ValueWrapper_new( &ValueWrapperType, NULL, NULL );
+//		// set the private information
+//		if ( !val->is_permanent() ) {
+//			output->mValue	= val->make_heap_permanent();
+//			output->mCollectable = true;
+//		} else {
+//			output->mValue = val;
+//		}
+		output->mValue = val;
+		Protector::protect( (PyObject*) output );
 
-	// protect the value from garbage collection
-	((ValueWrapper*) (output))->mValue = val->eval()->make_heap_permanent();
-
-	return output;
+		return (PyObject*) output;
+	}
 }
 

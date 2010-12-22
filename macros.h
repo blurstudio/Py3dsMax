@@ -65,6 +65,7 @@
 
 #define		PY_CATCHMXSERROR()			catch ( MAXScriptException& e ) { \
 											error_message_box( e, "Error" ); \
+											ObjectWrapper::setPyErrorString( e ); \
 											PyErr_SetString( PyExc_RuntimeError, "MAXScript Error Occurred - see listener for details." ); \
 										} \
 										catch ( ... ) { \

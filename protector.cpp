@@ -44,11 +44,19 @@ void Protector::gc_trace() {
 }
 
 Value* Protector::get_property( Value** arg_list, int count ) {
-	// return the length of the memory array
+	// return the length of the memory list
 	if ( arg_list[0] == n_count ) {
 		if ( protected_objects )
 			return Integer::intern( protected_objects->size() );
 		return Integer::intern(0);
+	}
+	// dump the contents of the memory list
+	else if ( arg_list[0] == Name::intern( "dump" ) ) {
+		PyObject* inst;
+		for ( std::list<PyObject*>::iterator it = protected_objects->begin(); it != protected_objects->end(); ++it ) {
+			ObjectWrapper::log( *it );
+		}
+		return &ok;
 	}
 
 	// return default value results for the keywords
