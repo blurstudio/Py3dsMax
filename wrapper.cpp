@@ -29,6 +29,8 @@ typedef	intargfunc		ssizeargfunc;
 
 #endif
 
+static long LAST_ID = 1;
+
 //---------------------------------------------------------------
 // ValueWrapper Implementation
 //---------------------------------------------------------------
@@ -36,6 +38,7 @@ typedef struct {
 	PyObject_HEAD
 	Value*		mValue;			// Pointer to the MAXScript Value
 	bool		mCollectable;
+	long		mId;
 } ValueWrapper;
 
 // ctor
@@ -43,8 +46,13 @@ static PyObject*
 ValueWrapper_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
 	ValueWrapper* self;
 	self = (ValueWrapper*)type->tp_alloc(type, 0);
+
+	// generate the hash id
+	LAST_ID++;
+
 	self->mValue		= NULL;
 	self->mCollectable	= true;
+	self->mId			= LAST_ID;
 	return (PyObject*) self;
 }
 
@@ -52,16 +60,21 @@ ValueWrapper_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
 static void
 ValueWrapper_dealloc( ValueWrapper* self ) {
 	// Step 1: unprotect the value
-//	if ( self->mValue && self->mCollectable ) {
-//		self->mValue->make_collectable();			// mark this item as collectable
-//	}
 	Protector::unprotect( (PyObject*) self );
+	if ( self->mValue ) {
+		self->mValue->unmark_in_use();
+	}
 
 	// Step 3: clear the pointers
 	self->mValue	= NULL;
 
 	// Step 4: fre the python memory
 	self->ob_type->tp_free( (PyObject*) self );
+}
+
+static long
+ValueWrapper_hash( ValueWrapper* self ) {
+	return self->mId;
 }
 
 // __call__ function: called when calling a function on a ValueWrapper instance
@@ -196,9 +209,6 @@ static PyObject*
 ValueWrapper_str( ValueWrapper* self ) {
 	// Step 1: protect values
 	MXS_PROTECT( two_typed_value_locals( Value* mxs_check, StringStream* mxs_stream ) );
-	//init_thread_locals();
-	//two_typed_value_locals( Value* mxs_check, StringStream* mxs_stream );
-	//save_current_frames();
 
 	// Step 2: evaluate the value
 	MXS_EVAL( self->mValue, vl.mxs_check );
@@ -215,25 +225,15 @@ ValueWrapper_str( ValueWrapper* self ) {
 	// Step 5: try to use the builtin maxscript print out
 	else {
 		vl.mxs_stream = new StringStream();
-		
-		//ValueMetaClass* outVal = new ValueMetaClass();
-		//StringStream* check_stream = new StringStream();
 		try {
 			vl.mxs_check->sprin1( vl.mxs_stream );
 			output = PyString_FromString( vl.mxs_stream->to_string() );
-			//vl.mxs_check->sprin1(check_stream);
-			//vl.mxs_check->eval();
-			//vl.mxs_check->sprin1(check_stream);
-			//const char* streamValue = check_stream->to_string();
-			//output = PyString_FromString(check_stream->to_string());
 		}
 		MXS_CATCHERRORS();
-		//outVal = NULL;
 	}
 
 	// Step 6: cleanup maxscript memory
 	MXS_CLEANUP();
-	//pop_value_locals();
 	return output;
 }
 
@@ -810,7 +810,8 @@ static PyTypeObject ValueWrapperType = {
     &proxy_as_number,													// tp_as_number
     &proxy_as_sequence,													// tp_as_sequence
     &proxy_as_mapping,													// tp_as_mapping
-    0,																	// tp_hash 
+    (hashfunc) ValueWrapper_hash,										// tp_hash 
+	//0,																	// tp_hash 
     (ternaryfunc)ValueWrapper_call,										// tp_call
     (reprfunc)ValueWrapper_str,											// tp_str
     0,																	// tp_getattro
@@ -1055,10 +1056,6 @@ ObjectWrapper::intern( PyObject* obj ) {
 
 	// Step 2: convert ValueWrapper instances
 	else if ( obj->ob_type == &ValueWrapperType ) {
-		// return a duplicate of this value wrapper's value
-//		one_value_local(output);
-//		vl.output = ((ValueWrapper*) (obj))->mValue;
-//		return_protected(vl.output);
 		return ((ValueWrapper*) (obj))->mValue;		// already a protected value
 	}
 
@@ -1105,7 +1102,6 @@ ObjectWrapper::intern( PyObject* obj ) {
 	}
 
 	else {
-
 		// Step 12: create a ObjectWrapper instance
 		return new ObjectWrapper( obj );
 	}
@@ -1114,6 +1110,8 @@ ObjectWrapper::intern( PyObject* obj ) {
 // initialize function: Initializes the PyObject* class
 bool
 ObjectWrapper::init() {
+	ObjectWrapper::collectionMaps = new CollectionMap();
+
 	return ( PyType_Ready( &ValueWrapperType ) < 0 ) ? false : true;
 }
 
@@ -1195,7 +1193,18 @@ ObjectWrapper::py_intern( Value* val ) {
 		return Py_False;
 	}
 
-	// Step 9: check for all collections (except bitarrays & modifier arrays)
+	// map object sets or arrays to a python array using a node_map
+	else if ( is_objectset( mxs_check ) || is_array( mxs_check ) ) {
+		PyObject* output = PyList_New(0);
+		ObjectWrapper::collectionMaps->push_back( output );
+		Value* args[1] = { NULL };
+		node_map m = { NULL, ObjectWrapper::collectionMapper, args, 0 };
+		mxs_check->map( m );
+		ObjectWrapper::collectionMaps->pop_back();
+		return output;
+	}
+
+	// Step 9: check for all collections (except bitarrays, modifiers, and objectsets)
 	else if ( is_collection( mxs_check ) && !(is_bitarray( mxs_check ) || is_maxmodifierarray( mxs_check )) ) {
 		// Step 10: grab the collection's count
 		int count = mxs_check->_get_property( n_count )->to_int();
@@ -1215,14 +1224,7 @@ ObjectWrapper::py_intern( Value* val ) {
 	else {
 		// Step 13: create a new ValueWrapper instance
 		ValueWrapper* output = (ValueWrapper*) ValueWrapper_new( &ValueWrapperType, NULL, NULL );
-
-//		// set the private information
-//		if ( !val->is_permanent() ) {
-//			output->mValue	= val->make_heap_permanent();
-//			output->mCollectable = true;
-//		} else {
-//			output->mValue = val;
-//		}
+		
 		output->mValue = val;
 		Protector::protect( (PyObject*) output );
 
@@ -1230,3 +1232,14 @@ ObjectWrapper::py_intern( Value* val ) {
 	}
 }
 
+Value*
+ObjectWrapper::collectionMapper( Value** arg_list, int count ) {
+	// method used to map items from an array to a python array - faster than using the get_vf method for non-array's
+	PyObject* collection	= ObjectWrapper::collectionMaps->back();
+	PyObject* object		= ObjectWrapper::py_intern( arg_list[0] );
+	PyList_Append( collection, object );
+	Py_DECREF(object);
+	return &ok;
+}
+
+CollectionMap* ObjectWrapper::collectionMaps = 0;

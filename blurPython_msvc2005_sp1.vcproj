@@ -1239,6 +1239,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\protector.h"
+				>
+			</File>
+			<File
 				RelativePath=".\wrapper.h"
 				>
 			</File>
@@ -1246,6 +1250,10 @@
 		<Filter
 			Name="src"
 			>
+			<File
+				RelativePath=".\protector.cpp"
+				>
+			</File>
 			<File
 				RelativePath=".\python_struct.cpp"
 				>

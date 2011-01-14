@@ -14,10 +14,15 @@
 #ifndef		__WRAPPER_H__
 #define		__WRAPPER_H__
 
+#include	<list>
+
+typedef std::list<PyObject*>	CollectionMap;
+
 visible_class( ObjectWrapper );
 class ObjectWrapper : public Value {
 private:
-	PyObject*		mObject;
+	PyObject*						mObject;
+	static CollectionMap*			collectionMaps;		// used when mapping a collection to a python list
 
 public:
 	ObjectWrapper( PyObject* obj = NULL );
@@ -47,6 +52,7 @@ public:
 
 	// objectwrapper static methods
 	static Value*		intern( PyObject* obj );
+	static Value*		collectionMapper( Value** args, int count );
 	static bool			init();
 	static void			handleMaxscriptError();
 	static void			gc_protect( PyObject* obj );
@@ -56,3 +62,36 @@ public:
 };
 
 #endif		__WRAPPER_H__
+
+/*
+Value* 
+intersect_nodes(Value** arg_list, int count)
+{
+	// node tab collector for selection node mapping
+	// arg0 is node candidate, arg1 is result Array, arg2 is the ray value
+	Value* res = intersectRayScene(((MAXNode*)arg_list[0])->node, arg_list[2]);
+	if (res != &undefined) 
+	{
+		one_typed_value_local(Array* result);
+		vl.result = new Array (2);
+		vl.result->append(arg_list[0]);
+		vl.result->append(res);
+		((Array*)arg_list[1])->append(vl.result);
+	}
+	return &ok;
+}
+
+Value*
+intersectRayScene_cf(Value** arg_list, int count)
+{
+	check_arg_count(intersectRayScene, 1, count);
+	arg_list[0]->to_ray();
+	one_typed_value_local(Array* result);
+	vl.result = new Array (0);
+	Value* args[3] = { NULL, vl.result, arg_list[0] };
+	node_map m = { NULL, intersect_nodes, args, 2 };
+	Value* all_objects = globals->get(Name::intern(_T("objects")))->eval();
+	all_objects->map(m);
+	return_value(vl.result);
+}
+*/

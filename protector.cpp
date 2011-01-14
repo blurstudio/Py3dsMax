@@ -13,14 +13,18 @@
 #include "maxscrpt.h"
 #include "value.h"
 
-#include <list>
+#include <map>
 
 #include "macros.h"
 #include "wrapper.h"
 #include "protector.h"
 
 // Create the staic protection list
-static std::list<PyObject*> * protected_objects = 0;
+typedef std::map<long,PyObject*>			ProtectionMap;				// using a hash map vs. a list for speed (initial version used a list and took forever) - EKH 2011
+typedef std::pair<long,PyObject*>			ProtectionPair;
+typedef std::map<long,PyObject*>::iterator	ProtectionIterator;
+
+ProtectionMap* protected_objects = 0;
 
 visible_class_instance( Protector, "PyMemProtector" );
 Value* ProtectorClass::apply( Value** arg_list, int count, CallContext* cc ) {
@@ -36,10 +40,9 @@ void Protector::gc_trace() {
 	// Step 1: trace this item
 	Value::gc_trace();
 
-	// Step 2: trace all the protected items
 	if ( protected_objects ) {
-		for ( std::list<PyObject*>::iterator it = protected_objects->begin(); it != protected_objects->end(); ++it )
-			ObjectWrapper::gc_protect( (*it) );
+		for ( ProtectionIterator it = protected_objects->begin(); it != protected_objects->end(); ++it )
+			ObjectWrapper::gc_protect( (*it).second );
 	}
 }
 
@@ -53,8 +56,8 @@ Value* Protector::get_property( Value** arg_list, int count ) {
 	// dump the contents of the memory list
 	else if ( arg_list[0] == Name::intern( "dump" ) ) {
 		PyObject* inst;
-		for ( std::list<PyObject*>::iterator it = protected_objects->begin(); it != protected_objects->end(); ++it ) {
-			ObjectWrapper::log( *it );
+		for ( ProtectionIterator it = protected_objects->begin(); it != protected_objects->end(); ++it ) {
+			ObjectWrapper::log( (*it).second );
 		}
 		return &ok;
 	}
@@ -65,18 +68,20 @@ Value* Protector::get_property( Value** arg_list, int count ) {
 
 void Protector::protect( PyObject* obj ) {
 	// Step 1: insert the object into the protection list
-	protected_objects->push_back( obj );
+	long hash = PyObject_Hash(obj);
+	protected_objects->insert( ProtectionMap::value_type( hash, obj ) );
 }
 
 void Protector::unprotect( PyObject* obj ) {
 	// Step 1: remove the protected object
 	if ( protected_objects ) {
-		protected_objects->remove( obj );
+		long hash = PyObject_Hash(obj);
+		protected_objects->erase( protected_objects->find( hash ) );
 	}
 }
 
 void Protector::init() {
-		// Step 1: create the array if it does not exist
+	// Step 1: create the array if it does not exist
 	if ( !protected_objects )
-		protected_objects = new std::list<PyObject*>();
+		protected_objects = new ProtectionMap();
 }
