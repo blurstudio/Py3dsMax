@@ -62,6 +62,7 @@ ValueWrapper_dealloc( ValueWrapper* self ) {
 	// Step 1: unprotect the value
 	Protector::unprotect( (PyObject*) self );
 	if ( self->mValue ) {
+		//self->mValue->make_collectable();
 		self->mValue->unmark_in_use();
 	}
 
@@ -273,9 +274,9 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 static int
 ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
 	bool success = true;
-	try { ((ValueWrapper*) self)->mValue->eval()->_set_property( Name::intern(key), ObjectWrapper::intern(value) ); }
+	try { self->mValue->_set_property( Name::intern(key), ObjectWrapper::intern(value) ); }
 	catch ( ... ) { success = false; }
-
+	
 	if ( success ) {
 		return 0;
 	}
@@ -1056,7 +1057,9 @@ ObjectWrapper::intern( PyObject* obj ) {
 
 	// Step 2: convert ValueWrapper instances
 	else if ( obj->ob_type == &ValueWrapperType ) {
-		return ((ValueWrapper*) (obj))->mValue;		// already a protected value
+		one_value_local( output );
+		vl.output = ((ValueWrapper*) obj)->mValue->eval();
+		return_value( vl.output );
 	}
 
 	// Step 3: convert strings/unicodes
@@ -1085,17 +1088,23 @@ ObjectWrapper::intern( PyObject* obj ) {
 		// Step 8: create a maxscript array of items
 		one_typed_value_local(Array* output);
 		vl.output = new Array(count);
-		
-		PyObject* temp;
-		for ( int i = 0; i < count; i++ ) {
-			// Step 9: collect the item from python
-			temp = PySequence_GetItem( obj, i );
 
-			// Step 10: insert the item into maxscript
-			vl.output->append( ObjectWrapper::intern( temp ) );
+		PyObject* iterator = PyObject_GetIter(obj);
+		PyObject* item;
 
-			// Step 11: free the python memory
-			Py_XDECREF( temp );
+		if ( iterator != NULL ) {			
+			while ( item = PyIter_Next(iterator) ) {
+				vl.output->append( ObjectWrapper::intern( item ) );
+				Py_DECREF(item);
+			}
+
+			Py_DECREF(iterator);
+			if ( PyErr_Occurred() ) {
+				// propogate error
+			}
+		}
+		else {
+				// propogate error
 		}
 
 		return_value(vl.output);
@@ -1225,7 +1234,7 @@ ObjectWrapper::py_intern( Value* val ) {
 		// Step 13: create a new ValueWrapper instance
 		ValueWrapper* output = (ValueWrapper*) ValueWrapper_new( &ValueWrapperType, NULL, NULL );
 		
-		output->mValue = val;
+		output->mValue = val; //->make_heap_permanent();
 		Protector::protect( (PyObject*) output );
 
 		return (PyObject*) output;
