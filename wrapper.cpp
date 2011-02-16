@@ -847,15 +847,19 @@ visible_class_instance( ObjectWrapper, "PyObjectWrapper" );
 
 // ctor
 ObjectWrapper::ObjectWrapper( PyObject* obj ) {
-	this->tag		= class_tag(ObjectWrapper);
-	this->mObject	= obj;
+	this->tag			= class_tag(ObjectWrapper);
+	this->mObject		= obj;
+	this->mObjectDict	= NULL;
+
 	Py_XINCREF(obj);
 }
 
 // dtor
 ObjectWrapper::~ObjectWrapper() {
 	Py_XDECREF( this->mObject );
-	this->mObject = NULL;
+	Py_XDECREF( this->mObjectDict );
+	this->mObject		= NULL;
+	this->mObjectDict	= NULL;
 }
 
 // __call__ function: call a python object with maxscript values
@@ -954,10 +958,52 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 
 	// Step 3: lookup by keyword
 	else {
+		// try to access the attribute directly
 		char* kstring = arg_list[0]->eval()->to_string();
-
+		
 		if ( PyObject_HasAttrString( this->mObject, kstring ) )
 			vl.output = ObjectWrapper::intern( PyObject_GetAttrString( this->mObject, kstring ) );
+
+		// because maxscript does not preserve the actual case sensitivity for the property, we have to check against
+		// all possible options comparing lower case sensitvity to the keys
+		else {
+			// create a lowercase version of the maxscript key
+			TSTR mxskstring = TSTR(kstring);
+			mxskstring.toLower();
+
+			if ( this->mObjectDict == NULL ) {
+				// loop through the internal dictionary comparing the lowercase attributes to see if we have one
+				PyObject **dictptr = _PyObject_GetDictPtr(this->mObject);
+				if ( dictptr != NULL ) {
+					this->mObjectDict = *dictptr;
+					Py_XINCREF(this->mObjectDict);
+				}
+				dictptr = NULL;
+			}
+
+			if ( this->mObjectDict != NULL ) {
+				PyObject *key, *value;
+				Py_ssize_t pos = 0;
+
+				while ( PyDict_Next( this->mObjectDict, &pos, &key, &value ) ) {
+					// create a lowercase version of the python key
+					TSTR pykstring = TSTR(PyString_AsString(key));
+					pykstring.toLower();
+
+					// return the first instance in the dictionary that has matching lowercase keys
+					if ( pykstring == mxskstring ) {
+						vl.output = ObjectWrapper::intern( PyObject_GetAttr( this->mObject, key ) );
+
+						// Py_DECREF(key);		// when these are in, maxscript will crash - somehow this is not increfing correctly is my guess
+						// Py_DECREF(value);
+						break;
+					}
+
+					// Py_DECREF(key);			// when these are in, maxscript will crash - somehow this is not increfing correctly is my guess
+					// Py_DECREF(value);
+				}
+			}
+		}
 	}
 
 	// Step 4: return the value, protecting maxscript memory
