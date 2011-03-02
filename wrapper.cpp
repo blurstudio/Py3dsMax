@@ -259,22 +259,18 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 	}
 
 	// return the default maxscript value
-	Value* output = NULL;
-	try {
-		output = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(key) );
-	}
-	catch ( ... ) {
-		PyErr_SetString( PyExc_AttributeError, TSTR(key) + " is not a member of " + PyString_AsString(ValueWrapper_str(self)) );
-		return NULL;
-	}
-	return ObjectWrapper::py_intern( output );
+	Value* result = NULL;
+	try { result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(key) ); }
+	catch ( ... ) { PyErr_SetString( PyExc_AttributeError, TSTR(key) + " is not a property of " + PyString_AsString( ValueWrapper_str( (ValueWrapper*) self ) ) ); }
+
+	return ObjectWrapper::py_intern( result );
 }
 
 // __setattr__ function: sets a property by name for a Value*
 static int
 ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
 	bool success = true;
-	try { self->mValue->_set_property( Name::intern(key), ObjectWrapper::intern(value) ); }
+	try { self->mValue->eval()->_set_property( Name::intern(key), ObjectWrapper::intern(value) ); }
 	catch ( ... ) { success = false; }
 	
 	if ( success ) {
@@ -1121,7 +1117,7 @@ ObjectWrapper::intern( PyObject* obj ) {
 
 	// Step 5: convert float
 	else if ( obj->ob_type == &PyFloat_Type )
-		return Float::intern( PyFloat_AsDouble( obj ) );
+		return Double::intern( PyFloat_AsDouble( obj ) );
 
 	// Step 6: convert boolean
 	else if ( obj->ob_type == &PyBool_Type )

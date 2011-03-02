@@ -55,7 +55,6 @@ Value* Protector::get_property( Value** arg_list, int count ) {
 	}
 	// dump the contents of the memory list
 	else if ( arg_list[0] == Name::intern( "dump" ) ) {
-		PyObject* inst;
 		for ( ProtectionIterator it = protected_objects->begin(); it != protected_objects->end(); ++it ) {
 			ObjectWrapper::log( (*it).second );
 		}
