@@ -885,13 +885,13 @@ ObjectWrapper::apply( Value** arg_list, int count, CallContext* cc ) {
 		// Step 5: generate the function arguments (args cannot be NULL)
 		args = PyTuple_New( py_count );
 		for ( int i = 0; i < py_count; i++ )
-			PyTuple_SetItem( args, i, ObjectWrapper::py_intern( arg_list[i] ) );
+			PyTuple_SetItem( args, i, ObjectWrapper::py_intern( arg_list[i]->eval() ) );
 
 		// Step 6: generate the function keywords
 		if ( py_count != count ) {
 			kwds = PyDict_New();
 			for ( int i = py_count + 1; i < count; i += 2 )
-				PyDict_SetItem( kwds, PyString_FromString( arg_list[i]->eval()->to_string() ), ObjectWrapper::py_intern( arg_list[i+1] ) );
+				PyDict_SetItem( kwds, PyString_FromString( arg_list[i]->eval()->to_string() ), ObjectWrapper::py_intern( arg_list[i+1]->eval() ) );
 		}
 
 		// Step 7: execture the python call
