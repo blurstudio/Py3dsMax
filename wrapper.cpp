@@ -1294,3 +1294,4 @@ ObjectWrapper::collectionMapper( Value** arg_list, int count ) {
 }
 
 CollectionMap* ObjectWrapper::collectionMaps = 0;
+HMODULE ObjectWrapper::hInstance = 0;

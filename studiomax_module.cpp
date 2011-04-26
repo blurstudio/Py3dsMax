@@ -134,7 +134,7 @@ studiomax_getwindowhandle( PyObject* self ) {
 // Py3dsMax.GetPluginInstance() - required for Qt/plugin parenting
 static PyObject*
 studiomax_getplugininstance( PyObject* self ) {
-	return PyInt_FromLong( (long)hInstance );
+	return PyInt_FromLong( (long)ObjectWrapper::hInstance );
 }
 
 // Py3dsMax.DispatchMessage() - passes along a message to the window
@@ -233,9 +233,13 @@ static bool file_in( CharStream* source, CharStream* log ) {
 	push_alloc_frame();
 	three_typed_value_locals(Parser* parser, Value* code, Value* result);
 	save_current_frames();
+
+	// these variables have been deprecated for maxscript in max 2012
+#ifndef __MAXSCRIPT_2012__
 	disable_trace_back = FALSE;
 	trace_back_active = TRUE;
 	trace_back_levels = 10;
+#endif
 
 	CharStream* out = thread_local(current_stdout);
 

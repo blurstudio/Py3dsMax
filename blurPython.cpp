@@ -45,3 +45,15 @@ PyMODINIT_FUNC init_module();
 __declspec( dllexport ) void				LibInit()			{ init_module(); }
 __declspec( dllexport ) const TCHAR*		LibDescription()	{ return _T( "Py3dsMax Python Extension" ); }
 __declspec( dllexport ) ULONG				LibVersion()		{ return VERSION_3DSMAX; }
+
+// Maxscript 2012 requires these additional exports
+#ifdef __MAXSCRIPT_2012__
+
+// we aren't defining any classes in this plugin, so this is pretty easy
+// other plugins should refer to samples/scriptplugin for an example of the new
+// registration system - that is the only plugin that does not error out of the samples
+// in max
+__declspec( dllexport ) int					LibNumberClasses()		{ return 0; }
+__declspec( dllexport ) ClassDesc*			LibClassDesc( int i )	{ return 0; }
+
+#endif

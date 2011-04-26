@@ -60,6 +60,8 @@ public:
 	static bool			is_wrapper( PyObject* obj );
 	static void			log(		PyObject* obj );
 	static PyObject*	py_intern( Value* val );
+
+	static HMODULE hInstance;
 };
 
 #endif		__WRAPPER_H__

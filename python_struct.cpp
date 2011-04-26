@@ -20,14 +20,19 @@
 #include <graminit.h>
 #include <pythonrun.h>
 
-// setup the scripter export symbols
-#ifdef ScripterExport
-	#undef ScripterExport
-#endif
-#define ScripterExport __declspec( dllexport )
+// updated to work with max 2012's new maxscript organization
+#ifdef __MAXSCRIPT_2012__
+
+#include "macros/define_external_functions.h"
+#include "macros/define_instantiation_functions.h"
+
+// include settings for previous versions of 3dsmax
+#else
 
 #include "defextfn.h"
 #include "definsfn.h"
+
+#endif
 
 #include "macros.h"
 #include "wrapper.h"

@@ -70,7 +70,7 @@
 				ShowProgress="2"
 				OutputFile="$(OutDir)\blurPython26.dlx"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;C:\Program Files (x86)\Autodesk\3ds Max 2010 SDK\maxsdk\x64\lib&quot;;c:\python26_64\libs"
+				AdditionalLibraryDirectories="&quot;$(MAX2010SDK)\x64\lib&quot;;&quot;$(PYTHON26_64)\libs&quot;"
 				IgnoreDefaultLibraryNames="python26_d.lib"
 				ModuleDefinitionFile="blurPython.def"
 				GenerateDebugInformation="true"
@@ -128,7 +128,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;C:\Program Files (x86)\Autodesk\3ds Max 2010 SDK\maxsdk\include\maxscrpt&quot;;&quot;C:\Program Files (x86)\Autodesk\3ds Max 2010 SDK\maxsdk\include&quot;;c:\python26_64\include"
+				AdditionalIncludeDirectories="&quot;$(PYTHON26_64)\include&quot;;&quot;$(MAX2010SDK)\include\maxscrpt&quot;;&quot;$(MAX2010SDK)\include&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_CRD_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE"
 				RuntimeLibrary="2"
 				WarningLevel="3"
@@ -149,7 +149,7 @@
 				AdditionalDependencies="maxscrpt.lib core.lib maxutil.lib geom.lib"
 				ShowProgress="2"
 				OutputFile="$(OutDir)\blurPython26.dlx"
-				AdditionalLibraryDirectories="&quot;C:\Program Files (x86)\Autodesk\3ds Max 2010 SDK\maxsdk\x64\lib&quot;;c:\python26_64\libs"
+				AdditionalLibraryDirectories="&quot;$(MAX2010SDK)\x64\lib&quot;;&quot;$(PYTHON26_64)\libs&quot;"
 				IgnoreDefaultLibraryNames="python26_d.lib"
 				ModuleDefinitionFile="blurPython.def"
 				SubSystem="2"
@@ -210,13 +210,13 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;C:\Program Files (x86)\Autodesk\3ds Max 2010 SDK\maxsdk\include\maxscrpt&quot;;&quot;C:\Program Files (x86)\Autodesk\3ds Max 2010 SDK\maxsdk\include&quot;;c:\python24\include"
+				AdditionalIncludeDirectories="&quot;$(MAX2010SDK)\include\maxscrpt&quot;;&quot;$(MAX2010SDK)\include&quot;;&quot;$(PYTHON24)\include&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_CRD_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;MAKE_PY26_COMPAT"
-				ExceptionHandling="2"
-				BasicRuntimeChecks="3"
+				ExceptionHandling="0"
+				BasicRuntimeChecks="0"
 				RuntimeLibrary="2"
-				EnableEnhancedInstructionSet="1"
-				FloatingPointModel="2"
+				EnableEnhancedInstructionSet="0"
+				FloatingPointModel="0"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="false"
@@ -233,10 +233,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="core.lib geom.lib maxscrpt.lib maxutil.lib"
+				AdditionalDependencies="maxscrpt.lib core.lib maxutil.lib geom.lib"
+				ShowProgress="2"
 				OutputFile="$(OutDir)\blurPython24.dlx"
-				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;C:\Program Files (x86)\Autodesk\3ds Max 2010 SDK\maxsdk\lib&quot;;c:\python24\libs"
+				LinkIncremental="0"
+				AdditionalLibraryDirectories="&quot;$(MAX2010SDK)\lib&quot;;&quot;$(PYTHON24)\libs&quot;"
 				IgnoreDefaultLibraryNames="python24_d.lib"
 				ModuleDefinitionFile="blurPython.def"
 				GenerateDebugInformation="true"
@@ -294,6 +295,8 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalIncludeDirectories="&quot;$(PYTHON24)\include&quot;;&quot;$(MAX2010SDK)\include\maxscrpt&quot;;&quot;$(MAX2010SDK)\include&quot;"
+				PreprocessorDefinitions="MAKE_PY26_COMPAT"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -306,6 +309,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="maxscrpt.lib core.lib maxutil.lib geom.lib"
+				AdditionalLibraryDirectories="&quot;$(MAX2010SDK)\lib&quot;;&quot;$(PYTHON24)\libs&quot;"
+				IgnoreDefaultLibraryNames="python24_d.lib"
+				ModuleDefinitionFile="blurPython.def"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -548,6 +555,14 @@
 		</File>
 		<File
 			RelativePath=".\blurPython.rc"
+			>
+		</File>
+		<File
+			RelativePath=".\license.txt"
+			>
+		</File>
+		<File
+			RelativePath=".\README.txt"
 			>
 		</File>
 		<File
