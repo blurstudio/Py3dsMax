@@ -30,6 +30,7 @@
     <ProjectGuid>{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}</ProjectGuid>
     <RootNamespace>blurPython_msvc2010</RootNamespace>
     <Keyword>Win32Proj</Keyword>
+    <ProjectName>blurPython</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Max2012x64_Python26_hybrid|Win32'" Label="Configuration">
@@ -89,10 +90,10 @@
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Max2012x64_Python26|Win32'">$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Max2012x64_Python26|Win32'">$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Max2012x64_Python26|Win32'">false</LinkIncremental>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Max2012x64_Python26|x64'">$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Max2012x64_Python26|x64'">$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Max2012_Python24|Win32'">$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Max2012_Python24|Win32'">$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Max2012x64_Python26|x64'">x64\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Max2012x64_Python26|x64'">x64\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Max2012_Python24|Win32'">x86\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Max2012_Python24|Win32'">x86\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Max2012_Python24|Win32'" />
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Max2012_Python24|x64'">$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Max2012_Python24|x64'">$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
@@ -168,7 +169,7 @@
     <Link>
       <AdditionalDependencies>maxscrpt.lib;core.lib;maxutil.lib;geom.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ShowProgress>LinkVerboseLib</ShowProgress>
-      <OutputFile>$(OutDir)blurPython26.dlx</OutputFile>
+      <OutputFile>x64\blurPython26.dlx</OutputFile>
       <AdditionalLibraryDirectories>$(MAX2012SDK)\x64\lib;$(PYTHON26_64)\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>python26_d.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ModuleDefinitionFile>blurPython.def</ModuleDefinitionFile>
@@ -203,7 +204,7 @@
     <Link>
       <AdditionalDependencies>maxscrpt.lib;core.lib;maxutil.lib;geom.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ShowProgress>LinkVerboseLib</ShowProgress>
-      <OutputFile>$(OutDir)blurPython24.dlx</OutputFile>
+      <OutputFile>x86\blurPython24.dlx</OutputFile>
       <AdditionalLibraryDirectories>$(MAX2012SDK)\lib;$(PYTHON24)\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>python24_d.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ModuleDefinitionFile>blurPython.def</ModuleDefinitionFile>
