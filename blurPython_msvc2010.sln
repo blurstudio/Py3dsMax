@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "blurPython_msvc2010", "blurPython_msvc2010.vcxproj", "{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "blurPython", "blurPython_msvc2010.vcxproj", "{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -16,6 +16,7 @@ Global
 		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Max2012x64_Python26|Win32.ActiveCfg = Max2012x64_Python26|Win32
 		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Max2012x64_Python26|Win32.Build.0 = Max2012x64_Python26|Win32
 		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Max2012x64_Python26|x64.ActiveCfg = Max2012x64_Python26|x64
+		{78FEBC09-C6EB-4D5F-A7A2-6D580847783E}.Max2012x64_Python26|x64.Build.0 = Max2012x64_Python26|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

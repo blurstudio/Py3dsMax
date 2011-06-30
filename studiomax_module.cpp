@@ -235,7 +235,11 @@ static bool file_in( CharStream* source, CharStream* log ) {
 	save_current_frames();
 
 	// these variables have been deprecated for maxscript in max 2012
-#ifndef __MAXSCRIPT_2012__
+#ifdef __MAXSCRIPT_2012__
+	set_error_trace_back_disabled(FALSE);
+	set_error_trace_back_active(TRUE);
+	set_error_trace_back_level(10);
+#else
 	disable_trace_back = FALSE;
 	trace_back_active = TRUE;
 	trace_back_levels = 10;
@@ -249,6 +253,7 @@ static bool file_in( CharStream* source, CharStream* log ) {
 		vl.parser = new Parser(out);
 		source->flush_whitespace();
 		while (!source->at_eos() || vl.parser->back_tracked) {
+			// In max 2012 this line will error out when the line return is only \n (a linux convention) see http://redmine.blur.com/issues/6446 for more details.
 			vl.code		= vl.parser->compile(source);
 			vl.result	= vl.code->eval();
 			source->flush_whitespace();
