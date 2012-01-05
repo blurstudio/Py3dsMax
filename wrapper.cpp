@@ -78,56 +78,6 @@ ValueWrapper_hash( ValueWrapper* self ) {
 	return self->mId;
 }
 
-Value*
-process_args(int mxs_count, int arg_count, int key_count, PyObject* args, PyObject* kwds, Value* method, Value* result, StringStream* log) {
-	// Step 6: if we do, we need to create a volatile array and protect it
-	Value** mxs_args;
-	//MXS_PROTECT(value_local_array(mxs_args,mxs_count));
-	value_local_array(mxs_args,mxs_count) 
-
-	// Step 7: add converted arguments
-	for ( int i = 0; i < arg_count; i++ ) {
-		mxs_args[i] = ObjectWrapper::intern( PyTuple_GetItem( args, i ) );
-	}
-
-	// Step 8: add converted keywords
-	if ( key_count != -1 ) {
-		PyObject *pkey, *pvalue;
-		Py_ssize_t pos	= 0;
-		int key_pos		= 0;
-
-		// Maxscript deliminates keywords from arguments by supplying the &keyarg_marker pointer
-		// for when the keywords start, and from there does a key, value pairing in the array
-		mxs_args[arg_count]	= &keyarg_marker;
-
-		while ( PyDict_Next(kwds, &pos, &pkey, &pvalue ) ) {
-			mxs_args[ arg_count + 1 + (key_pos*2) ] = Name::intern( PyString_AsString( pkey ) );
-			mxs_args[ arg_count + 2 + (key_pos*2) ] = ObjectWrapper::intern( pvalue );
-			key_pos++;
-		}
-
-		// Release the key and value pointers
-		pkey	= NULL;
-		pvalue	= NULL;
-	}
-
-	// Step 9: call the method and use try/catch to protect the memory
-	try { result = method->apply( mxs_args, mxs_count ); }
-	catch ( ... ) {
-		//MXS_CLEARERRORS();
-		clear_error_source_data(); 
-		MAXScript_signals = 0;
-		PyErr_SetString( PyExc_RuntimeError, log->to_string() );
-		result = NULL;
-	}
-
-	// clear the value local memory
-	pop_value_local_array(mxs_args);
-	pop_alloc_frame();
-	
-	return result;
-}
-
 // __call__ function: called when calling a function on a ValueWrapper instance
 static PyObject*
 ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
@@ -153,8 +103,46 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 	if ( vl.method ) {
 		// Step 5: check to see if we need maxscript arguments
 		if ( mxs_count ) {
-			// Step 6: moved to a secondary method for memory management
-			vl.result = process_args(mxs_count, arg_count, key_count, args, kwds, vl.method, vl.result, vl.log);
+			// Step 6: if we do, we need to create a volatile array and protect it
+			Value** mxs_args;
+			value_local_array(mxs_args,mxs_count);
+
+			// Step 7: add converted arguments
+			for ( int i = 0; i < arg_count; i++ ) {
+				mxs_args[i] = ObjectWrapper::intern( PyTuple_GetItem( args, i ) );
+			}
+
+			// Step 8: add converted keywords
+			if ( key_count != -1 ) {
+				PyObject *pkey, *pvalue;
+				Py_ssize_t pos	= 0;
+				int key_pos		= 0;
+
+				// Maxscript deliminates keywords from arguments by supplying the &keyarg_marker pointer
+				// for when the keywords start, and from there does a key, value pairing in the array
+				mxs_args[arg_count]	= &keyarg_marker;
+
+				while ( PyDict_Next(kwds, &pos, &pkey, &pvalue ) ) {
+					mxs_args[ arg_count + 1 + (key_pos*2) ] = Name::intern( PyString_AsString( pkey ) );
+					mxs_args[ arg_count + 2 + (key_pos*2) ] = ObjectWrapper::intern( pvalue );
+					key_pos++;
+				}
+
+				// Release the key and value pointers
+				pkey	= NULL;
+				pvalue	= NULL;
+			}
+
+			// Step 9: call the method and use try/catch to protect the memory
+			try { vl.result = vl.method->apply( mxs_args, mxs_count ); }
+			catch ( ... ) {
+				MXS_CLEARERRORS();
+				PyErr_SetString( PyExc_RuntimeError, vl.log->to_string() );
+				vl.result = NULL;
+			}
+
+			// clear the value local memory
+			pop_value_local_array(mxs_args);
 		}
 		else {
 			// Step 6: if we don't, simply call the method with a NULL array
