@@ -249,10 +249,13 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 		PyObject * self_str = ValueWrapper_str(self);
 		PyErr_Format( PyExc_AttributeError, "%s is not a property of %s", key, PyString_AsString(self_str) );
 		Py_DECREF(self_str);
+		pop_value_locals();
 		return 0;
 	}
-
-	return ObjectWrapper::py_intern( vl.result );
+	
+	tmp = ObjectWrapper::py_intern( vl.result );
+	pop_value_locals();
+	return tmp;
 }
 
 // __setattr__ function: sets a property by name for a Value*
