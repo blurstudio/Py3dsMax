@@ -15,6 +15,19 @@
 #ifndef		__MACROS_H__
 #define		__MACROS_H__
 
+#include "Python.h"
+
+char * pythonExceptionTraceback( bool clearException = true );
+
+class PyExcRuntimeError : public RuntimeError
+{
+public:
+	PyExcRuntimeError( char * error );
+	~PyExcRuntimeError();
+private:
+	char * error;
+};
+
 #define		DEBUG_MODE						true
 
 #define		DEBUG_MSG( MSG )				if ( DEBUG_MODE ) { PyRun_SimpleString( "print %%MSG%%" ); }
@@ -51,9 +64,11 @@
 
 
 // Call this macro to clean up any python errors that may have occurred
+// TODO: Test for quiet mode
 #define		PY_CLEARERRORS()			if ( PyErr_Occurred() ) { \
-											PyErr_Print(); \
-											throw RuntimeError( "Python Exception: Traceback printed in listener." ); \
+											/* PyErr_Print(); */ \
+											throw PyExcRuntimeError( pythonExceptionTraceback() ); \
+											/* throw RuntimeError( "Python Exception: Traceback printed in listener." ); */ \
 										}
 
 #define		PY_PROCESSERROR( PYEXC, MEXC )  MXS_CLEARERRORS(); \

@@ -14,17 +14,12 @@
 #ifndef		__WRAPPER_H__
 #define		__WRAPPER_H__
 
-#include	<list>
-
-typedef std::list<PyObject*>	CollectionMap;
 
 visible_class( ObjectWrapper );
 class ObjectWrapper : public Value {
 private:
 	PyObject*						mObject;
 	PyObject*						mObjectDict;
-	static CollectionMap*			collectionMaps;		// used when mapping a collection to a python list
-
 public:
 	ObjectWrapper( PyObject* obj = NULL );
 	~ObjectWrapper();
@@ -56,12 +51,22 @@ public:
 	static Value*		collectionMapper( Value** args, int count );
 	static bool			init();
 	static void			handleMaxscriptError();
-	static void			gc_protect( PyObject* obj );
 	static bool			is_wrapper( PyObject* obj );
 	static void			log(		PyObject* obj );
 	static PyObject*	py_intern( Value* val );
 
 	static HMODULE hInstance;
 };
+
+struct _ValueWrapper;
+
+typedef struct _ValueWrapper {
+	PyObject_HEAD
+	Value*		mValue;			// Pointer to the MAXScript Value
+	// Double linked list of ValueWrappers, used to provide
+	// O(n) iteration by the Protector class, and O(1) insertion
+	// and deletion.  The Protector stores the head of the list.
+	struct _ValueWrapper * mPrev, * mNext;
+} ValueWrapper;
 
 #endif		__WRAPPER_H__

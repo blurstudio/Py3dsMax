@@ -29,17 +29,9 @@ typedef	intargfunc		ssizeargfunc;
 
 #endif
 
-static long LAST_ID = 1;
-
 //---------------------------------------------------------------
 // ValueWrapper Implementation
 //---------------------------------------------------------------
-typedef struct {
-	PyObject_HEAD
-	Value*		mValue;			// Pointer to the MAXScript Value
-	bool		mCollectable;
-	long		mId;
-} ValueWrapper;
 
 // ctor
 static PyObject*
@@ -47,35 +39,18 @@ ValueWrapper_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
 	ValueWrapper* self;
 	self = (ValueWrapper*)type->tp_alloc(type, 0);
 
-	// generate the hash id
-	LAST_ID++;
-
 	self->mValue		= NULL;
-	self->mCollectable	= true;
-	self->mId			= LAST_ID;
+	self->mNext = self->mPrev = 0;
 	return (PyObject*) self;
 }
 
 // dtor
 static void
 ValueWrapper_dealloc( ValueWrapper* self ) {
-	// Step 1: unprotect the value
-	Protector::unprotect( (PyObject*) self );
-	if ( self->mValue ) {
-		//self->mValue->make_collectable();
-		self->mValue->unmark_in_use();
-	}
 
-	// Step 3: clear the pointers
-	self->mValue	= NULL;
+	Protector::unprotect( self );
 
-	// Step 4: fre the python memory
 	self->ob_type->tp_free( (PyObject*) self );
-}
-
-static long
-ValueWrapper_hash( ValueWrapper* self ) {
-	return self->mId;
 }
 
 // __call__ function: called when calling a function on a ValueWrapper instance
@@ -162,6 +137,10 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 	PyObject* output = NULL;
 	if ( vl.result )
 		output = ObjectWrapper::py_intern( vl.result );
+	else if( !PyErr_Occurred() ) {
+		output = Py_None;
+		Py_INCREF(Py_None);
+	}
 	
 	// Step 11: cleanup the maxscript errors
 	MXS_CLEANUP();
@@ -235,6 +214,11 @@ ValueWrapper_str( ValueWrapper* self ) {
 
 	// Step 6: cleanup maxscript memory
 	MXS_CLEANUP();
+	if( !output ) {
+		output = Py_None;
+		Py_INCREF(output);
+	}
+	
 	return output;
 }
 
@@ -259,11 +243,16 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 	}
 
 	// return the default maxscript value
-	Value* result = NULL;
-	try { result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(key) ); }
-	catch ( ... ) { PyErr_SetString( PyExc_AttributeError, TSTR(key) + " is not a property of " + PyString_AsString( ValueWrapper_str( (ValueWrapper*) self ) ) ); }
+	one_value_local(result);
+	try { vl.result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(key) ); }
+	catch ( ... ) {
+		PyObject * self_str = ValueWrapper_str(self);
+		PyErr_Format( PyExc_AttributeError, "%s is not a property of %s", key, PyString_AsString(self_str) );
+		Py_DECREF(self_str);
+		return 0;
+	}
 
-	return ObjectWrapper::py_intern( result );
+	return ObjectWrapper::py_intern( vl.result );
 }
 
 // __setattr__ function: sets a property by name for a Value*
@@ -277,7 +266,9 @@ ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
 		return 0;
 	}
 	else {
-		PyErr_SetString( PyExc_AttributeError, TSTR(key) + " is not a member of " + PyString_AsString(ValueWrapper_str(self)) );
+		PyObject * self_str = ValueWrapper_str(self);
+		PyErr_Format( PyExc_AttributeError, "%s is not a member of %s", key, PyString_AsString(self_str) );
+		Py_DECREF(self_str);
 		return 1;
 	}
 }
@@ -308,7 +299,7 @@ ValueWrapper_length( PyObject* self ) {
 // __getitem__ function: get an item from an index in a maxscript value
 static PyObject*
 ValueWrapper_item( PyObject* self, int index ) {
-	MXS_PROTECT( one_value_local( mxs_check ) );
+	MXS_PROTECT( three_value_locals( mxs_check, mindex, result ) );
 	MXS_EVAL( ((ValueWrapper*) self)->mValue, vl.mxs_check );
 
 	int count = 0;
@@ -316,6 +307,7 @@ ValueWrapper_item( PyObject* self, int index ) {
 	// pull the lenght of the collection
 	try { count = vl.mxs_check->_get_property( n_count )->to_int(); }
 	catch ( ... ) { 
+		MXS_CLEARERRORS();
 		PyErr_SetString( PyExc_IndexError, "__getitem__ cannot access item for index" ); 
 		MXS_CLEANUP();
 		return NULL;
@@ -334,15 +326,14 @@ ValueWrapper_item( PyObject* self, int index ) {
 	}
 
 	// pull the value
-	Value* result = NULL;
-	Value* mindex = Integer::intern( index + 1 );
+	vl.mindex = Integer::intern( index + 1 );
 
-	try { result = vl.mxs_check->get_vf( &mindex, 1 ); }
+	try { vl.result = vl.mxs_check->get_vf( &vl.mindex, 1 ); }
 	MXS_CATCHERRORS();
 
 	PyObject* output = NULL;
-	if ( !result ) { PyErr_SetString( PyExc_IndexError, "__getitem__ index is out of range" ); }
-	else { output = ObjectWrapper::py_intern(result); }
+	if ( !vl.result ) { PyErr_SetString( PyExc_IndexError, "__getitem__ index is out of range" ); }
+	else { output = ObjectWrapper::py_intern(vl.result); }
 
 	MXS_CLEANUP();
 
@@ -683,19 +674,26 @@ ValueWrapper_nonzero( PyObject* self ){
 // create custom methods
 static PyObject*
 ValueWrapper_property( PyObject* self, PyObject* args ) {
+	PyObject * ret = 0;
 	char* propName;
 	
 	if ( !PyArg_ParseTuple( args, "s", &propName ) )
 		return NULL;
 
-	Value* result = NULL;
-	try { result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(propName) ); }
-	catch ( ... ) { PyErr_SetString( PyExc_AttributeError, TSTR(propName) + " is not a property of " + PyString_AsString( ValueWrapper_str( (ValueWrapper*) self ) ) ); }
-
-	if ( result ) {
-		return ObjectWrapper::py_intern( result );
+	one_value_local(result);
+	try { vl.result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(propName) ); }
+	catch ( ... ) {
+		PyObject * self_str = ValueWrapper_str((ValueWrapper*)self);
+		PyErr_Format( PyExc_AttributeError, "%s is not a property of %s", propName, PyString_AsString(self_str) );
+		Py_DECREF(self_str);
 	}
-	return NULL;
+
+	if ( vl.result ) {
+		ret = ObjectWrapper::py_intern( vl.result );
+	}
+	
+	pop_value_locals();
+	return ret;
 }
 
 static PyObject*
@@ -807,8 +805,7 @@ static PyTypeObject ValueWrapperType = {
     &proxy_as_number,													// tp_as_number
     &proxy_as_sequence,													// tp_as_sequence
     &proxy_as_mapping,													// tp_as_mapping
-    (hashfunc) ValueWrapper_hash,										// tp_hash 
-	//0,																	// tp_hash 
+    0,																	// tp_hash 
     (ternaryfunc)ValueWrapper_call,										// tp_call
     (reprfunc)ValueWrapper_str,											// tp_str
     0,																	// tp_getattro
@@ -917,11 +914,7 @@ ObjectWrapper::apply( Value** arg_list, int count, CallContext* cc ) {
 // collect function: this function is run when the garbage collection determines this maxscript variable is ready to be destroyed
 void
 ObjectWrapper::collect() {
-	// Step 1: Dereference our python object, and set it to null
-	Py_XDECREF( this->mObject );
-	this->mObject = NULL;
-
-	// Step 2: delete this instance
+	// Python object cleanup is done in the dtor
 	delete this;
 }
 
@@ -974,10 +967,10 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 					this->mObjectDict = *dictptr;
 					Py_XINCREF(this->mObjectDict);
 				}
-				dictptr = NULL;
 			}
 
 			if ( this->mObjectDict != NULL ) {
+				// These will be borrowed references during the loop
 				PyObject *key, *value;
 				Py_ssize_t pos = 0;
 
@@ -989,14 +982,8 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 					// return the first instance in the dictionary that has matching lowercase keys
 					if ( pykstring == mxskstring ) {
 						vl.output = ObjectWrapper::intern( PyObject_GetAttr( this->mObject, key ) );
-
-						// Py_DECREF(key);		// when these are in, maxscript will crash - somehow this is not increfing correctly is my guess
-						// Py_DECREF(value);
 						break;
 					}
-
-					// Py_DECREF(key);			// when these are in, maxscript will crash - somehow this is not increfing correctly is my guess
-					// Py_DECREF(value);
 				}
 			}
 		}
@@ -1021,17 +1008,17 @@ ObjectWrapper::set_property( Value** arg_list, int count ) {
 // __getitem__ function: get a value from a python sequence/mapping from maxscript
 Value*
 ObjectWrapper::get_vf( Value** arg_list, int count ) {
-	MXS_PROTECT( one_value_local( output ) );
+	MXS_PROTECT( two_value_locals( output, key ) );
 
 	PyObject* py_key	= NULL;
 	PyObject* py_result = NULL;
 
 	// Step 1: convert the input keys
-	Value* key = arg_list[0]->eval();
+	vl.key = arg_list[0]->eval();
 
 	try {
-		if ( is_number( key ) ) { py_key = PyInt_FromLong( key->to_int() ); }
-		else					{ py_key = PyString_FromString( key->to_string() ); }
+		if ( is_number( vl.key ) ) { py_key = PyInt_FromLong( vl.key->to_int() ); }
+		else					{ py_key = PyString_FromString( vl.key->to_string() ); }
 	}
 	MXS_CATCHERRORS();
 
@@ -1079,7 +1066,7 @@ ObjectWrapper::to_string() {
 		PyObject* py_string = PyObject_Str( this->mObject );
 		char* out = ( py_string ) ? PyString_AsString( py_string ) : "<<python: error converting value to string>>";
 		PY_CLEARERRORS();
-			
+		
 		// Step 3: release the python memory
 		Py_XDECREF( py_string );
 
@@ -1161,20 +1148,14 @@ ObjectWrapper::intern( PyObject* obj ) {
 // initialize function: Initializes the PyObject* class
 bool
 ObjectWrapper::init() {
-	ObjectWrapper::collectionMaps = new CollectionMap();
-
 	return ( PyType_Ready( &ValueWrapperType ) < 0 ) ? false : true;
-}
-
-// gc_protect function: calls the gc_trace on a ValueWrapper instance
-void
-ObjectWrapper::gc_protect( PyObject* obj ) {
-	((ValueWrapper*) (obj))->mValue->gc_trace();
 }
 
 void
 ObjectWrapper::log( PyObject* obj ) {
-	mprintf( "%s\n", PyString_AsString( ValueWrapper_str( (ValueWrapper*) obj ) ) );
+	PyObject * self_str = ValueWrapper_str((ValueWrapper*)obj);
+	mprintf( "%s\n", PyString_AsString(self_str) );
+	Py_DECREF(self_str);
 }
 
 // is_wrapper function: checks the type of the object to make sure its a ValueWrapper
@@ -1247,11 +1228,9 @@ ObjectWrapper::py_intern( Value* val ) {
 	// map object sets or arrays to a python array using a node_map
 	else if ( is_objectset( mxs_check ) || is_array( mxs_check ) ) {
 		PyObject* output = PyList_New(0);
-		ObjectWrapper::collectionMaps->push_back( output );
-		Value* args[1] = { NULL };
-		node_map m = { NULL, ObjectWrapper::collectionMapper, args, 0 };
+		Value* args[2] = { NULL, (Value*)output };
+		node_map m = { NULL, ObjectWrapper::collectionMapper, args, 2 };
 		mxs_check->map( m );
-		ObjectWrapper::collectionMaps->pop_back();
 		return output;
 	}
 
@@ -1276,9 +1255,12 @@ ObjectWrapper::py_intern( Value* val ) {
 		// Step 13: create a new ValueWrapper instance
 		ValueWrapper* output = (ValueWrapper*) ValueWrapper_new( &ValueWrapperType, NULL, NULL );
 		
-		output->mValue = val; //->make_heap_permanent();
-		Protector::protect( (PyObject*) output );
-
+		one_value_local(heap_ptr);
+		vl.heap_ptr = val->get_heap_ptr();
+		output->mValue = vl.heap_ptr;
+		Protector::protect( output );
+		pop_value_locals();
+		
 		return (PyObject*) output;
 	}
 }
@@ -1286,12 +1268,11 @@ ObjectWrapper::py_intern( Value* val ) {
 Value*
 ObjectWrapper::collectionMapper( Value** arg_list, int count ) {
 	// method used to map items from an array to a python array - faster than using the get_vf method for non-array's
-	PyObject* collection	= ObjectWrapper::collectionMaps->back();
+	PyObject* collection	= (PyObject*)arg_list[1];
 	PyObject* object		= ObjectWrapper::py_intern( arg_list[0] );
 	PyList_Append( collection, object );
 	Py_DECREF(object);
 	return &ok;
 }
 
-CollectionMap* ObjectWrapper::collectionMaps = 0;
 HMODULE ObjectWrapper::hInstance = 0;

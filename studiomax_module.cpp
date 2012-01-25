@@ -406,8 +406,6 @@ init_module(void) {
 		return;
 	}
 
-	Protector::init();
-
 	// Step 3: make sure the object wrapper is running
 	if ( !ObjectWrapper::init() ) {
 		return;

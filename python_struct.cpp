@@ -110,6 +110,7 @@ run_cf( Value** arg_list, int count ) {
 
 	// Step 3: check to make sure the file exists
 	if ( !py_file ) {
+		MXS_CLEANUP();
 		return &false_value;
 	}
 
@@ -141,6 +142,7 @@ exec_cf( Value** arg_list, int count ) {
 
 	// Step 3: check to make sure the command is valid
 	if ( !command ) {
+		MXS_CLEANUP();
 		return &false_value;
 	}
 
@@ -152,4 +154,87 @@ exec_cf( Value** arg_list, int count ) {
 	MXS_CLEANUP();
 	
 	return &ok;
+}
+
+PyExcRuntimeError::PyExcRuntimeError( char * _error )
+: RuntimeError( _error )
+, error( _error )
+{}
+
+PyExcRuntimeError::~PyExcRuntimeError()
+{
+	delete error;
+}
+
+// Returns a new string
+char * pythonExceptionTraceback( bool clearException )
+{
+	/*
+		import traceback
+		return '\n'.join(traceback.format_exc()).encode('ascii','replace')
+	*/
+	char * ret = 0;
+	bool success = false;
+
+	PyObject * type, * value, * traceback;
+	/* Save the current exception */
+	PyErr_Fetch(&type, &value, &traceback);
+	if( type ) {
+	
+		PyObject * traceback_module = PyImport_ImportModule("traceback");
+		if (traceback_module) {
+
+			/* Call the traceback module's format_exception function, which returns a list */
+			PyObject * traceback_list = PyObject_CallMethod(traceback_module, "format_exception", "OOO", type, value ? value : Py_None, traceback ? traceback : Py_None);
+			if( traceback_list ) {
+
+				PyObject * separator = PyString_FromString("");
+				if( separator ) {
+
+					PyObject * retUni = PyUnicode_Join(separator, traceback_list);
+					if( retUni ) {
+						PyObject * retAscii = PyUnicode_AsEncodedString(retUni, "ascii", "replace");
+						if( retAscii ) {
+							Py_ssize_t len = 0;
+							char * tmp;
+							if( PyString_AsStringAndSize( retAscii, &tmp, &len ) != -1 ) {
+								ret = strdup( tmp ); //, len );
+								Py_DECREF( retAscii );
+								success = true;
+							} else {
+								ret = strdup( "Uhoh, failed to get pointer to ascii representation of the exception" );
+								success = false;
+							}
+							Py_DECREF( retAscii );
+						} else {
+							ret = strdup( "Uhoh, encoding exception to ascii failed" );
+							success = false;
+						}
+						Py_DECREF(retUni);
+
+					} else
+						ret = strdup("PyUnicode_Join failed");
+
+					Py_DECREF(separator);
+				} else
+					ret = strdup("PyUnicode_FromString failed");
+
+				Py_DECREF(traceback_list);
+			} else
+				ret = strdup("Failure calling traceback.format_exception");
+
+			Py_DECREF(traceback_module);
+		} else
+			ret = strdup("Unable to load the traceback module, can't get exception text");
+	} else
+		ret = strdup("pythonExceptionTraceback called, but no exception set");
+
+	if( clearException ) {
+		Py_DECREF(type);
+		Py_XDECREF(value);
+		Py_XDECREF(traceback);
+	} else
+		PyErr_Restore(type,value,traceback);
+
+	return ret;
 }
