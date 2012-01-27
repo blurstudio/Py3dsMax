@@ -42,11 +42,14 @@ static PyObject*
 mxs_getattro( PyObject* self, PyObject* key ) {
 	// Step 1: convert the key to a name
 	char* keystr	= PyString_AsString( key );
-	Value* name		= Name::intern( keystr );
+	
+	MXS_PROTECT(one_value_local(name));
+	vl.name = Name::intern( keystr );
 
 	// Step 2: collect the PyObject* instance
-	PyObject* output = ObjectWrapper::py_intern( globals->get( name ) );
-
+	PyObject* output = ObjectWrapper::py_intern( globals->get( vl.name ) );
+	MXS_CLEANUP();
+	
 	return output;
 }
 
@@ -186,10 +189,12 @@ studiomax_runScript( PyObject* self, PyObject* args ) {
 
 	// Step 3: run the file
 	PyRun_SimpleFile( PyFile_AsFile(py_file), filename );
-	PY_CLEARERRORS();
 
 	// Step 4: clear the memory
 	Py_XDECREF( py_file );
+
+	if( PyErr_Occurred() )
+		return 0;
 
 	// return true
 	Py_INCREF( Py_True );
@@ -317,18 +322,27 @@ studiomax_runMaxscript( PyObject* self, PyObject* args ) {
 // Py3dsMax.getVisController() - get the visibility controller of a node
 static PyObject*
 studiomax_getVisController( PyObject* self, PyObject* args ) {
+	PyObject * ret = 0;
 	if ( PyTuple_Size(args) == 1 ) {
 		// convert the input item to a maxscript value
 		PyObject* item	= PyTuple_GetItem(args,0);
-		Value* obj		= ObjectWrapper::intern(item);
+		MXS_PROTECT(one_value_local(obj));
+		vl.obj		= ObjectWrapper::intern(item);
 
-		if ( is_node(obj) ) {
-			return ObjectWrapper::py_intern( MAXControl::intern( ((MAXNode*)obj)->node->GetVisController() ) );
+		if ( is_node(vl.obj) ) {
+			ret = ObjectWrapper::py_intern( MAXControl::intern( ((MAXNode*)vl.obj)->node->GetVisController() ) );
 		}
+		MXS_CLEANUP();
+	} else {
+		PyErr_SetString( PyExc_AttributeError, "getVisController takes one argument, a max object." );
+		return 0;
 	}
 
-	Py_INCREF( Py_None );
-	return Py_None;
+	if( !ret ) {
+		Py_INCREF( Py_None );
+		ret = Py_None;
+	}
+	return ret;
 }
 
 // Py3dsMax.setVisController() - set the visibility controller of a node
@@ -350,6 +364,9 @@ studiomax_setVisController( PyObject* self, PyObject* args ) {
 			}
 			catch ( ... ) {};
 		}
+	} else {
+		PyErr_SetString( PyExc_AttributeError, "setVisController takes two arguments, a max object and a visibility controller." );
+		return 0;
 	}
 	if ( success ) {
 		Py_INCREF( Py_True );

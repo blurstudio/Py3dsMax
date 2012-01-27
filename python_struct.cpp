@@ -63,7 +63,7 @@ import_cf( Value** arg_list, int count ) {
 	// Step 5: import the module
 	if ( module_name ) {
 		PyObject* module = PyImport_ImportModule( module_name );
-		PY_CLEARERRORS();
+		PY_ERROR_PROPAGATE_MXS_CLEANUP();
 
 		vl.mxs_return = ( module ) ? ObjectWrapper::intern( module ) : &undefined;
 	}
@@ -81,16 +81,17 @@ reload_cf( Value** arg_list, int count ) {
 	check_arg_count( python.reload, 1, count );
 
 	// Step 2: evaluate the input item
-	Value* mxs_check = NULL;
-	MXS_EVAL( arg_list[0], mxs_check );
+	MXS_PROTECT(one_value_local(mxs_check));
+	MXS_EVAL( arg_list[0], vl.mxs_check );
 	
 	// Step 3: make sure the item is a proper type
-	if ( is_objectwrapper(mxs_check) ) {
-		PyImport_ReloadModule( ((ObjectWrapper*) mxs_check)->object() );
-		PY_CLEARERRORS();
+	if ( is_objectwrapper(vl.mxs_check) ) {
+		PyImport_ReloadModule( ((ObjectWrapper*) vl.mxs_check)->object() );
+		PY_ERROR_PROPAGATE_MXS_CLEANUP();
 	}
 	else { mprintf( "python.reload() error: you need to supply a valid python module to reload\n" ); }
 
+	MXS_CLEANUP();
 	return &ok;	
 }
 
@@ -116,7 +117,7 @@ run_cf( Value** arg_list, int count ) {
 
 	// Step 4: run the file
 	PyRun_SimpleFile( PyFile_AsFile(py_file), filename );
-	PY_CLEARERRORS();
+	PY_ERROR_PROPAGATE_MXS_CLEANUP();
 
 	// Step 5: cleanup the memory
 	Py_XDECREF( py_file );
@@ -148,7 +149,7 @@ exec_cf( Value** arg_list, int count ) {
 
 	// Step 4: run the command
 	PyRun_SimpleString( command );
-	PY_CLEARERRORS();
+	PY_ERROR_PROPAGATE_MXS_CLEANUP();
 
 	// Step 5: cleanup the memory
 	MXS_CLEANUP();
@@ -164,6 +165,8 @@ PyExcRuntimeError::PyExcRuntimeError( char * _error )
 PyExcRuntimeError::~PyExcRuntimeError()
 {
 	delete error;
+	// Hopefully this is safe and keeps RuntimeError from double deleting our copy of the string
+	desc1 = 0;
 }
 
 // Returns a new string

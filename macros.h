@@ -65,11 +65,20 @@ private:
 
 // Call this macro to clean up any python errors that may have occurred
 // TODO: Test for quiet mode
-#define		PY_CLEARERRORS()			if ( PyErr_Occurred() ) { \
-											/* PyErr_Print(); */ \
-											throw PyExcRuntimeError( pythonExceptionTraceback() ); \
-											/* throw RuntimeError( "Python Exception: Traceback printed in listener." ); */ \
-										}
+#define PY_ERROR_PRINT_THROW() \
+	char * exc_str = pythonExceptionTraceback( /*clearException=*/ false ); \
+	PyErr_Print(); \
+	throw PyExcRuntimeError( exc_str );
+
+#define		PY_ERROR_PROPAGATE()			if ( PyErr_Occurred() ) { \
+												PY_ERROR_PRINT_THROW(); \
+											}
+
+#define PY_ERROR_PROPAGATE_MXS_CLEANUP() \
+	if ( PyErr_Occurred() ) { \
+		MXS_CLEANUP(); \
+		PY_ERROR_PRINT_THROW(); \
+	}
 
 #define		PY_PROCESSERROR( PYEXC, MEXC )  MXS_CLEARERRORS(); \
 											StringStream* buffer = new StringStream("MAXScript Error Has Occurred: \n"); \

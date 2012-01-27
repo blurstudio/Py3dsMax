@@ -896,7 +896,13 @@ ObjectWrapper::apply( Value** arg_list, int count, CallContext* cc ) {
 
 		// Step 7: execture the python call
 		py_result = PyObject_Call( this->mObject, args, kwds );
-		PY_CLEARERRORS();
+		if ( PyErr_Occurred() ) {
+			MXS_CLEARERRORS();
+			Py_XDECREF( args );
+			Py_XDECREF( kwds );
+			Py_XDECREF( py_result );
+			PY_ERROR_PRINT_THROW();
+		}
 
 		// Step 8: convert the result to a value
 		
@@ -1068,7 +1074,7 @@ ObjectWrapper::to_string() {
 		// Step 2: pull the python object string for this object
 		PyObject* py_string = PyObject_Str( this->mObject );
 		char* out = ( py_string ) ? PyString_AsString( py_string ) : "<<python: error converting value to string>>";
-		PY_CLEARERRORS();
+		PyErr_Clear();
 		
 		// Step 3: release the python memory
 		Py_XDECREF( py_string );
