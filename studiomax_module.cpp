@@ -125,6 +125,99 @@ static PyTypeObject MxsType = {
     mxs_new,									// tp_new 
 };
 
+
+typedef struct {
+    PyObject_HEAD;
+	BOOL restore_use_time_context;
+	int restore_current_time;
+} AtTime;
+
+// ctor
+static PyObject*
+AtTime_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
+	AtTime* self;
+	self = (AtTime*)type->tp_alloc(type, 0);
+	self->restore_use_time_context = thread_local(use_time_context);
+	self->restore_current_time = thread_local(current_time);
+	thread_local(current_time) = GetCOREInterface()->GetTime();
+	thread_local(use_time_context) = TRUE;
+	return (PyObject*) self;
+}
+
+static int
+AtTime_init(Noddy *self, PyObject *args, PyObject *kwds)
+{
+    return 0;
+}
+
+// dtor
+static void
+AtTime_dealloc( PyObject* self ) {
+	AtTime * at = (AtTime*)self;
+	thread_local(use_time_context) = at->restore_use_time_context;
+	thread_local(current_time) = at->restore_current_time;
+	self->ob_type->tp_free(self);
+}
+
+static PyObject * AtTime_call( ValueWrapper* self, PyObject* args, PyObject* kwds )
+{
+	if( !PyTuple_Check(args) || (PyTuple_Size(args) != 1) || (!PyNumber_Check(PyTuple_GetItem(args,0))) ) {
+		PyErr_SetString( PyExc_AttributeError, "Calling AtTime instances require a single time(int) argument" );
+		return 0;
+	}
+	
+	int timeValue = PyInt_AsLong(PyTuple_GetItem(args,0));
+	if( PyErr_Occurred() )
+		return 0;
+	
+	thread_local(current_time) = timeValue;
+	
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+
+static PyTypeObject AtTimeType = {
+    PyObject_HEAD_INIT(NULL)
+    0,											// ob_size
+	"Py3dsMax.AtTime",								// tp_name
+    sizeof(AtTime),								// tp_basicsize
+    0,											// tp_itemsize
+    (destructor)AtTime_dealloc,								// tp_dealloc
+    0,											// tp_print
+    0,											// tp_getattr
+	0,											// tp_setattr
+    0,											// tp_compare
+    0,											// tp_repr
+    0,											// tp_as_number
+    0,											// tp_as_sequence
+    0,											// tp_as_mapping
+    0,											// tp_hash
+    (ternaryfunc)AtTime_call,					// tp_call
+    0,											// tp_str
+    0,											// tp_getattro
+    0,										// tp_setattro
+    0,											// tp_as_buffer
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_CLASS,	// tp_flags
+    "MAXScript at time emulator",				// tp_doc 
+    0,											// tp_traverse 
+    0,											// tp_clear 
+    0,											// tp_richcompare 
+    0,											// tp_weaklistoffset 
+    0,											// tp_iter 
+    0,											// tp_iternext 
+    0,											// tp_methods 
+    0,											// tp_members 
+    0,											// tp_getset 
+    0,											// tp_base 
+    0,											// tp_dict 
+    0,											// tp_descr_get 
+    0,											// tp_descr_set 
+    0,											// tp_dictoffset 
+    (initproc)AtTime_init,						// tp_init 
+    0,											// tp_alloc 
+    AtTime_new,									// tp_new 
+};
+
 //-----------------------------------------------------------
 // define the studio max module (Py3dsMax)
 
@@ -423,6 +516,10 @@ init_module(void) {
 		return;
 	}
 
+	if ( PyType_Ready(&AtTimeType) < 0 ) {
+		return;
+	}
+	
 	// Step 3: make sure the object wrapper is running
 	if ( !ObjectWrapper::init() ) {
 		return;
@@ -439,5 +536,8 @@ init_module(void) {
 	PyObject* instance = mxs_new( &MxsType, NULL, NULL );
 	PyModule_AddObject( module, "mxs", instance );
 
+	Py_INCREF(&AtTimeType);
+	PyModule_AddObject( module, "AtTime", (PyObject*)&AtTimeType );
+	
 	mprintf( "[blurPython] DLL has been successfully loaded.\n" );
 }
