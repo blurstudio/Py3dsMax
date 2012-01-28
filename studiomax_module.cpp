@@ -145,7 +145,7 @@ AtTime_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
 }
 
 static int
-AtTime_init(Noddy *self, PyObject *args, PyObject *kwds)
+AtTime_init(AtTime *self, PyObject *args, PyObject *kwds)
 {
     return 0;
 }
