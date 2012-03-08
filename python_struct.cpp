@@ -198,11 +198,7 @@ char * pythonExceptionTraceback( bool clearException )
 					if( retUni ) {
 						PyObject * retAscii = PyUnicode_AsEncodedString(retUni, "ascii", "replace");
 						if( retAscii ) {
-#ifdef Py_ssize_t
 							Py_ssize_t len = 0;
-#else
-							int len = 0;
-#endif
 							char * tmp;
 							if( PyString_AsStringAndSize( retAscii, &tmp, &len ) != -1 ) {
 								ret = strdup( tmp ); //, len );

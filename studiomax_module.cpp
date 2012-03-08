@@ -128,8 +128,6 @@ static PyTypeObject MxsType = {
 
 typedef struct {
     PyObject_HEAD;
-	BOOL restore_use_time_context;
-	int restore_current_time;
 } AtTime;
 
 // ctor
@@ -137,16 +135,22 @@ static PyObject*
 AtTime_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
 	AtTime* self;
 	self = (AtTime*)type->tp_alloc(type, 0);
-	self->restore_use_time_context = thread_local(use_time_context);
-	self->restore_current_time = thread_local(current_time);
-	thread_local(current_time) = GetCOREInterface()->GetTime();
-	thread_local(use_time_context) = TRUE;
 	return (PyObject*) self;
 }
+
+static PyObject * AtTime_call( AtTime* self, PyObject* args, PyObject* kwds );
 
 static int
 AtTime_init(AtTime *self, PyObject *args, PyObject *kwds)
 {
+	int argCount = PyTuple_Check(args) ? PyTuple_Size(args) : 0;
+	if( argCount > 1 )
+		return -1;
+	if( argCount == 1 ) {
+		PyObject * result = AtTime_call( self, args, kwds );
+		Py_XDECREF(result);
+		return result ? 0 : -1;
+	}
     return 0;
 }
 
@@ -154,12 +158,36 @@ AtTime_init(AtTime *self, PyObject *args, PyObject *kwds)
 static void
 AtTime_dealloc( PyObject* self ) {
 	AtTime * at = (AtTime*)self;
-	thread_local(use_time_context) = at->restore_use_time_context;
-	thread_local(current_time) = at->restore_current_time;
+	
+	PyObject * tsd = PyThreadState_GetDict();
+	PyObject * atd = PyDict_GetItemString(tsd, "_AtTime" );
+	if( atd ) {
+		PyObject * cur_stack = PyDict_GetItemString( atd, "current_stack" );
+		PyObject * time_stack = PyDict_GetItemString( atd, "time_stack" );
+		
+		int time_top = PyList_Size(time_stack) - 1;
+		int pos = PySequence_Index(cur_stack, PyLong_FromLong( PyObject_Hash(self) ) );
+		
+		// Restore the correct time value if we are current
+		if( PyList_Size(cur_stack) == pos + 1 ) {
+			int restoreTime = PyLong_AsLong( PyList_GetItem( time_stack, time_top ) );
+			PySequence_DelItem(time_stack,time_top);
+		} else
+			// If we aren't current, then we delete the time at the position one above where we are in the current_stack
+			PySequence_DelItem(time_stack,pos+1);
+		
+		PySequence_DelItem(cur_stack,pos);
+		
+		// If we are the last AtTime object local to this thread, then remove the _AtTime thread-local dict
+		if( pos == 0 ) {
+			thread_local(use_time_context) = (PyDict_GetItemString( atd, "restore_use_time_context" ) == Py_True);
+			PyDict_DelItemString(tsd, "_AtTime");
+		}
+	}
 	self->ob_type->tp_free(self);
 }
 
-static PyObject * AtTime_call( ValueWrapper* self, PyObject* args, PyObject* kwds )
+static PyObject * AtTime_call( AtTime* self, PyObject* args, PyObject* kwds )
 {
 	if( !PyTuple_Check(args) || (PyTuple_Size(args) != 1) || (!PyNumber_Check(PyTuple_GetItem(args,0))) ) {
 		PyErr_SetString( PyExc_AttributeError, "Calling AtTime instances require a single time(int) argument" );
@@ -169,6 +197,35 @@ static PyObject * AtTime_call( ValueWrapper* self, PyObject* args, PyObject* kwd
 	int timeValue = PyInt_AsLong(PyTuple_GetItem(args,0));
 	if( PyErr_Occurred() )
 		return 0;
+	
+	PyObject * tsd = PyThreadState_GetDict();
+	PyObject * atd = PyDict_GetItemString(tsd, "_AtTime" );
+	if( !atd ) {
+		atd = PyDict_New();
+		PyDict_SetItemString( tsd, "_AtTime", atd );
+		PyObject * time_stack = PyList_New(1), * cur_stack = PyList_New(1);
+		PyList_SetItem( time_stack, 0, PyLong_FromLong(thread_local(current_time)) );
+		PyList_SetItem( cur_stack, 0, PyLong_FromLong(PyObject_Hash((PyObject*)self)) );
+		PyDict_SetItemString( atd, "time_stack", time_stack );
+		PyDict_SetItemString( atd, "current_stack", cur_stack );
+		PyDict_SetItemString( atd, "restore_use_time_context", PyBool_FromLong( thread_local(use_time_context) ) );
+		thread_local(use_time_context) = TRUE;
+	} else {
+		PyObject * time_stack = PyDict_GetItemString( atd, "time_stack" );
+		PyObject * cur_stack = PyDict_GetItemString( atd, "current_stack" );
+		int pos = PySequence_Index(cur_stack, PyLong_FromLong( PyObject_Hash((PyObject*)self) ) );
+		// If we are already current then there is nothing to do
+		if( pos != PyList_Size(cur_stack) - 1 ) {
+			// If we have restore entries, but aren't current, then delete our existing restore entries
+			if( pos >= 0 ) {
+				PySequence_DelItem( time_stack, pos + 1 );
+				PySequence_DelItem( cur_stack, pos );
+			}
+			// And add the new restore entries
+			PyList_Append(time_stack, PyLong_FromLong(thread_local(current_time)) );
+			PyList_Append(cur_stack, PyLong_FromLong(PyObject_Hash((PyObject*)self)) );
+		}
+	}
 	
 	thread_local(current_time) = timeValue;
 	
@@ -326,6 +383,8 @@ studiomax_undoOff( PyObject* self, PyObject* args ) {
 	return Py_True;
 }
 
+/*
+
 static bool file_in( CharStream* source, CharStream* log ) {
 	init_thread_locals();
 	push_alloc_frame();
@@ -384,7 +443,23 @@ studiomax_runMaxscript( PyObject* self, PyObject* args ) {
 	
 	if ( !PyArg_ParseTuple( args, "s", &fname ) )
 		return NULL;
+#if	1
+	one_typed_value_local(FileStream * file);
 
+	// open a fileStream instance on the file
+	vl.file = (new FileStream)->open( fname, "rt");
+	if (vl.file == (FileStream*)&undefined) {
+		PyErr_SetString( PyExc_RuntimeError, (TSTR("Py3dsMax.runMaxscript(filename): cannot open file - ") + fname) );
+		pop_value_locals();
+		return NULL;
+	}
+	
+	bool result = 0;
+	ExecuteScript(vl.file,&result);
+	
+	PyObject * out = result ? Py_True : Py_False;
+	Py_INCREF(out);
+#else
 	// pick up arguments
 	two_typed_value_locals(FileStream* file, StringStream* log );
 
@@ -407,10 +482,13 @@ studiomax_runMaxscript( PyObject* self, PyObject* args ) {
 		Py_INCREF(Py_True);
 		out = Py_True;
 	}
+#endif
 
 	pop_value_locals();
 	return out;
 }
+
+*/
 
 // Py3dsMax.getVisController() - get the visibility controller of a node
 static PyObject*
@@ -496,7 +574,7 @@ static PyMethodDef module_methods[] = {
 	{ "setVisController",	(PyCFunction)studiomax_setVisController,	METH_VARARGS,	"Set a nodes visibility controller" },
 
 	// python methods
-	{ "runMaxscript",		(PyCFunction)studiomax_runMaxscript,		METH_VARARGS,	"Runs a maxscript file for proper error checking" },
+//	{ "runMaxscript",		(PyCFunction)studiomax_runMaxscript,		METH_VARARGS,	"Runs a maxscript file for proper error checking" },
 	{ "runScript",			(PyCFunction)studiomax_runScript,           METH_VARARGS,   "Runs a python file in our global scope." },
 
 	// Version Functions

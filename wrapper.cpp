@@ -57,9 +57,9 @@ ValueWrapper_dealloc( ValueWrapper* self ) {
 static PyObject*
 ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 	// Step 1: calculate how many Value**'s we are going to need to pass the Value* method
-	int arg_count		= (args) ? PyTuple_Size( args ) : 0;
-	int key_count		= (kwds) ? PyDict_Size( kwds )	: -1;
-	int mxs_count		= (key_count == -1) ? arg_count : arg_count + 1 + (key_count*2);
+	Py_ssize_t arg_count		= (args) ? PyTuple_Size( args ) : 0;
+	Py_ssize_t key_count		= (kwds) ? PyDict_Size( kwds )	: -1;
+	Py_ssize_t mxs_count		= (key_count == -1) ? arg_count : arg_count + 1 + (key_count*2);
 
 	// Step 2: protect the maxcript memory we are going to use
 	MXS_PROTECT( three_typed_value_locals( Value* method, Value* result, StringStream* log ) );
@@ -1121,7 +1121,7 @@ ObjectWrapper::intern( PyObject* obj ) {
 
 	// Step 7: convert lists/tuples
 	else if ( obj->ob_type == &PyList_Type || obj->ob_type == &PyTuple_Type ) {
-		int count	= PyObject_Length(obj);
+		Py_ssize_t count	= PyObject_Length(obj);
 
 		// Step 8: create a maxscript array of items
 		one_typed_value_local(Array* output);
