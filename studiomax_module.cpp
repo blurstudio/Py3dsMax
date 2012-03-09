@@ -143,7 +143,7 @@ static PyObject * AtTime_call( AtTime* self, PyObject* args, PyObject* kwds );
 static int
 AtTime_init(AtTime *self, PyObject *args, PyObject *kwds)
 {
-	int argCount = PyTuple_Check(args) ? PyTuple_Size(args) : 0;
+	Py_ssize_t argCount = PyTuple_Check(args) ? PyTuple_Size(args) : 0;
 	if( argCount > 1 )
 		return -1;
 	if( argCount == 1 ) {
@@ -165,12 +165,15 @@ AtTime_dealloc( PyObject* self ) {
 		PyObject * cur_stack = PyDict_GetItemString( atd, "current_stack" );
 		PyObject * time_stack = PyDict_GetItemString( atd, "time_stack" );
 		
-		int time_top = PyList_Size(time_stack) - 1;
-		int pos = PySequence_Index(cur_stack, PyLong_FromLong( PyObject_Hash(self) ) );
+		Py_ssize_t time_top = PyList_Size(time_stack) - 1;
+		PyObject * hashKey = PyLong_FromLong( PyObject_Hash((PyObject*)self) );
+		Py_ssize_t pos = PySequence_Index(cur_stack, hashKey);
+		Py_DECREF(hashKey);
 		
 		// Restore the correct time value if we are current
 		if( PyList_Size(cur_stack) == pos + 1 ) {
-			int restoreTime = PyLong_AsLong( PyList_GetItem( time_stack, time_top ) );
+			thread_local(current_time) = PyLong_AsLong( PyList_GetItem( time_stack, time_top ) );
+			//PySys_WriteStdout( "Current AtTime object destroyed, restoring thread_local(current_time) to %i\n", thread_local(current_time) );
 			PySequence_DelItem(time_stack,time_top);
 		} else
 			// If we aren't current, then we delete the time at the position one above where we are in the current_stack
@@ -179,8 +182,9 @@ AtTime_dealloc( PyObject* self ) {
 		PySequence_DelItem(cur_stack,pos);
 		
 		// If we are the last AtTime object local to this thread, then remove the _AtTime thread-local dict
-		if( pos == 0 ) {
-			thread_local(use_time_context) = (PyDict_GetItemString( atd, "restore_use_time_context" ) == Py_True);
+		if( PyList_Size(cur_stack) == 0 ) {
+			thread_local(use_time_context) = (PyDict_GetItemString( atd, "restore_use_time_context" ) == Py_True) ? TRUE : FALSE;
+			//PySys_WriteStdout( "Last AtTime object destroyed, setting thread_local(use_time_context) to FALSE\n" );
 			PyDict_DelItemString(tsd, "_AtTime");
 		}
 	}
@@ -200,34 +204,67 @@ static PyObject * AtTime_call( AtTime* self, PyObject* args, PyObject* kwds )
 	
 	PyObject * tsd = PyThreadState_GetDict();
 	PyObject * atd = PyDict_GetItemString(tsd, "_AtTime" );
+	
+	// New reference is either transfered to a list, or decremented below
+	PyObject * hashKey = PyLong_FromLong( PyObject_Hash((PyObject*)self) );
+	
 	if( !atd ) {
+		
+		// New ref
 		atd = PyDict_New();
+		
 		PyDict_SetItemString( tsd, "_AtTime", atd );
+		// tsd now has a ref to atd
+		Py_DECREF(atd);
+		
+		// New refs
 		PyObject * time_stack = PyList_New(1), * cur_stack = PyList_New(1);
+		
+		// PyList_SetItem steals a reference
 		PyList_SetItem( time_stack, 0, PyLong_FromLong(thread_local(current_time)) );
-		PyList_SetItem( cur_stack, 0, PyLong_FromLong(PyObject_Hash((PyObject*)self)) );
+		// Give our hashKey reference to cur_stack
+		PyList_SetItem( cur_stack, 0, hashKey );
+		
+		// Dicts take their own reference, so we release ours after this
 		PyDict_SetItemString( atd, "time_stack", time_stack );
 		PyDict_SetItemString( atd, "current_stack", cur_stack );
-		PyDict_SetItemString( atd, "restore_use_time_context", PyBool_FromLong( thread_local(use_time_context) ) );
+		Py_DECREF(time_stack);
+		Py_DECREF(cur_stack);
+		
+		PyObject * utl = PyBool_FromLong( thread_local(use_time_context) );
+		// takes it's own ref, so we release ours
+		PyDict_SetItemString( atd, "restore_use_time_context", utl );
+		Py_DECREF(utl);
+		
 		thread_local(use_time_context) = TRUE;
+		//PySys_WriteStdout( "First AtTime struct activated, setting thread_local(use_time_context) to TRUE\n" );
 	} else {
+		// Borrowed refs
 		PyObject * time_stack = PyDict_GetItemString( atd, "time_stack" );
 		PyObject * cur_stack = PyDict_GetItemString( atd, "current_stack" );
-		int pos = PySequence_Index(cur_stack, PyLong_FromLong( PyObject_Hash((PyObject*)self) ) );
+		
+		Py_ssize_t pos = PySequence_Index(cur_stack, hashKey);
+		
 		// If we are already current then there is nothing to do
 		if( pos != PyList_Size(cur_stack) - 1 ) {
 			// If we have restore entries, but aren't current, then delete our existing restore entries
 			if( pos >= 0 ) {
+				//PySys_WriteStdout( "Deleting current entries in time and cur stack\n" );
 				PySequence_DelItem( time_stack, pos + 1 );
 				PySequence_DelItem( cur_stack, pos );
 			}
 			// And add the new restore entries
+			//PySys_WriteStdout( "Appending new entries in time and cur stack\n" );
 			PyList_Append(time_stack, PyLong_FromLong(thread_local(current_time)) );
-			PyList_Append(cur_stack, PyLong_FromLong(PyObject_Hash((PyObject*)self)) );
+			PyList_Append(cur_stack, hashKey );
+		} else {
+			//PySys_WriteStdout( "Already current, doing nothing but setting current_time\n" );
+			Py_DECREF(hashKey);
 		}
 	}
-	
-	thread_local(current_time) = timeValue;
+
+	//PySys_WriteStdout( "thread_local(current_time) set to %i\n", timeValue );
+	thread_local(current_time) = timeValue * GetTicksPerFrame();
 	
 	Py_INCREF(Py_None);
 	return Py_None;
@@ -236,10 +273,10 @@ static PyObject * AtTime_call( AtTime* self, PyObject* args, PyObject* kwds )
 static PyTypeObject AtTimeType = {
     PyObject_HEAD_INIT(NULL)
     0,											// ob_size
-	"Py3dsMax.AtTime",								// tp_name
+	"Py3dsMax.AtTime",							// tp_name
     sizeof(AtTime),								// tp_basicsize
     0,											// tp_itemsize
-    (destructor)AtTime_dealloc,								// tp_dealloc
+    (destructor)AtTime_dealloc,					// tp_dealloc
     0,											// tp_print
     0,											// tp_getattr
 	0,											// tp_setattr
@@ -252,7 +289,7 @@ static PyTypeObject AtTimeType = {
     (ternaryfunc)AtTime_call,					// tp_call
     0,											// tp_str
     0,											// tp_getattro
-    0,										// tp_setattro
+    0,											// tp_setattro
     0,											// tp_as_buffer
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_CLASS,	// tp_flags
     "MAXScript at time emulator",				// tp_doc 
