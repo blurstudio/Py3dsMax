@@ -202,7 +202,6 @@ char * pythonExceptionTraceback( bool clearException )
 							char * tmp;
 							if( PyString_AsStringAndSize( retAscii, &tmp, &len ) != -1 ) {
 								ret = strdup( tmp ); //, len );
-								Py_DECREF( retAscii );
 								success = true;
 							} else {
 								ret = strdup( "Uhoh, failed to get pointer to ascii representation of the exception" );
