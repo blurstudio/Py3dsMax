@@ -19,10 +19,9 @@
 
 visible_class_instance( Protector, "PyMemProtector" );
 
-int Protector::mCount = 0;
-ValueWrapper * Protector::mFirst = 0;
-
 Protector::Protector()
+: mCount(0)
+, mFirst(0)
 {}
 
 Protector::~Protector()
@@ -41,7 +40,7 @@ void Protector::gc_trace() {
 
 	ValueWrapper * cur = mFirst;
 	while( cur ) {
-		cur->mValue->gc_trace();
+		cur->gc_trace();
 		cur = cur->mNext;
 	}
 }
@@ -55,7 +54,7 @@ Value* Protector::get_property( Value** arg_list, int count ) {
 	else if ( arg_list[0] == Name::intern( "dump" ) ) {
 		ValueWrapper * cur = mFirst;
 		while( cur ) {
-			ObjectWrapper::log((PyObject*)cur);
+			ObjectWrapper::log(cur);
 			cur = cur->mNext;
 		}
 		return &ok;

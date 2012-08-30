@@ -165,8 +165,6 @@ PyExcRuntimeError::PyExcRuntimeError( char * _error )
 PyExcRuntimeError::~PyExcRuntimeError()
 {
 	delete error;
-	// Hopefully this is safe and keeps RuntimeError from double deleting our copy of the string
-	desc1 = 0;
 }
 
 // Returns a new string
@@ -201,7 +199,8 @@ char * pythonExceptionTraceback( bool clearException )
 							Py_ssize_t len = 0;
 							char * tmp;
 							if( PyString_AsStringAndSize( retAscii, &tmp, &len ) != -1 ) {
-								ret = strdup( tmp ); //, len );
+								ret = strndup( tmp, len );
+								Py_DECREF( retAscii );
 								success = true;
 							} else {
 								ret = strdup( "Uhoh, failed to get pointer to ascii representation of the exception" );

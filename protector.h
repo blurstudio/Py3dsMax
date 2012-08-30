@@ -16,8 +16,7 @@
 
 applyable_class( Protector );
 
-struct _ValueWrapper;
-typedef struct _ValueWrapper ValueWrapper;
+struct ValueWrapper;
 
 class Protector : public Value {
 public:
@@ -35,8 +34,8 @@ public:
 	static void unprotect( ValueWrapper * );
 
 protected:
-	static int mCount;
-	static ValueWrapper * mFirst;
+	int mCount;
+	ValueWrapper * mFirst;
 };
 
 #endif		__PROTECTOR_H__

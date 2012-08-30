@@ -109,7 +109,7 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 			}
 
 			// Step 9: call the method and use try/catch to protect the memory
-			try { vl.result = vl.method->apply( mxs_args, mxs_count ); }
+			try { vl.result = vl.method->apply( mxs_args, mxs_count )->get_heap_ptr(); }
 			catch ( ... ) {
 				MXS_CLEARERRORS();
 				PyErr_SetString( PyExc_RuntimeError, vl.log->to_string() );
@@ -252,7 +252,7 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 		pop_value_locals();
 		return 0;
 	}
-	
+
 	tmp = ObjectWrapper::py_intern( vl.result );
 	pop_value_locals();
 	return tmp;
@@ -944,18 +944,19 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 
 	vl.output = &undefined;
 
-	// Step 2: get default properties
-	if ( arg_list[0] == n_count ) {
-		if ( PyMapping_Check( this->mObject ) )
-			vl.output = Integer::intern( PyMapping_Length( this->mObject ) );
-		else if ( PySequence_Check( this->mObject ) )
-			vl.output = Integer::intern( PySequence_Length( this->mObject ) );
-		else
-			vl.output = Integer::intern( 0 );
-	}
+	do {
+		// Step 2: get default properties
+		if ( arg_list[0] == n_count ) {
+			if ( PyMapping_Check( this->mObject ) )
+				vl.output = Integer::intern( PyMapping_Length( this->mObject ) );
+			else if ( PySequence_Check( this->mObject ) )
+				vl.output = Integer::intern( PySequence_Length( this->mObject ) );
+			else
+				vl.output = Integer::intern( 0 );
+			break;
+		}
 
-	// Step 3: lookup by keyword
-	else {
+		// Step 3: lookup by keyword
 		// try to access the attribute directly
 		char* kstring = arg_list[0]->eval()->to_string();
 		
@@ -963,45 +964,64 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 			PyObject * attr = PyObject_GetAttrString( this->mObject, kstring );
 			vl.output = ObjectWrapper::intern( attr );
 			Py_XDECREF( attr );
+			break;
 		}
+				
+		// In order to avoid clashes with maxscript keywords we allow a trailing underscore to be silently removed
+		{
+			int keyLen = strlen(kstring);
+			if( kstring[keyLen-1] == '_' ) {
+				char * tmpKey = new char[keyLen];
+				strncpy(tmpKey, kstring, keyLen-1);
+				tmpKey[keyLen-1] = 0;
+				if ( PyObject_HasAttrString( this->mObject, tmpKey ) ) {
+					PyObject * attr = PyObject_GetAttrString( this->mObject, tmpKey );
+					vl.output = ObjectWrapper::intern( attr );
+					delete [] tmpKey;
+					Py_XDECREF( attr );
+					break;
+				}
+				delete [] tmpKey;
+			}
+		}
+				
 		// because maxscript does not preserve the actual case sensitivity for the property, we have to check against
 		// all possible options comparing lower case sensitvity to the keys
-		else {
-			// create a lowercase version of the maxscript key
-			TSTR mxskstring = TSTR(kstring);
-			mxskstring.toLower();
+		// create a lowercase version of the maxscript key
+		TSTR mxskstring = TSTR(kstring);
+		mxskstring.toLower();
 
-			if ( this->mObjectDict == NULL ) {
-				// loop through the internal dictionary comparing the lowercase attributes to see if we have one
-				PyObject **dictptr = _PyObject_GetDictPtr(this->mObject);
-				if ( dictptr != NULL ) {
-					this->mObjectDict = *dictptr;
-					Py_XINCREF(this->mObjectDict);
-				}
+		if ( this->mObjectDict == NULL ) {
+			// loop through the internal dictionary comparing the lowercase attributes to see if we have one
+			PyObject **dictptr = _PyObject_GetDictPtr(this->mObject);
+			if ( dictptr != NULL ) {
+				this->mObjectDict = *dictptr;
+				Py_XINCREF(this->mObjectDict);
 			}
+		}
 
-			if ( this->mObjectDict != NULL ) {
-				// These will be borrowed references during the loop
-				PyObject *key, *value;
-				Py_ssize_t pos = 0;
+		if ( this->mObjectDict != NULL ) {
+			// These will be borrowed references during the loop
+			PyObject *key, *value;
+			Py_ssize_t pos = 0;
 
-				while ( PyDict_Next( this->mObjectDict, &pos, &key, &value ) ) {
-					// create a lowercase version of the python key
-					TSTR pykstring = TSTR(PyString_AsString(key));
-					pykstring.toLower();
+			while ( PyDict_Next( this->mObjectDict, &pos, &key, &value ) ) {
+				// create a lowercase version of the python key
+				TSTR pykstring = TSTR(PyString_AsString(key));
+				pykstring.toLower();
 
-					// return the first instance in the dictionary that has matching lowercase keys
-					if ( pykstring == mxskstring ) {
-						PyObject * attr = PyObject_GetAttr( this->mObject, key );
-						vl.output = ObjectWrapper::intern( attr );
-						Py_XDECREF( attr );
-						break;
-					}
+				// return the first instance in the dictionary that has matching lowercase keys
+				if ( pykstring == mxskstring ) {
+					PyObject * attr = PyObject_GetAttr( this->mObject, key );
+					vl.output = ObjectWrapper::intern( attr );
+					Py_XDECREF( attr );
+					break;
 				}
 			}
 		}
-	}
-
+		
+	} while (false);
+	
 	// Step 4: return the value, protecting maxscript memory
 	MXS_RETURN( vl.output );
 }

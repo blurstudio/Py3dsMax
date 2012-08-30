@@ -58,15 +58,13 @@ public:
 	static HMODULE hInstance;
 };
 
-struct _ValueWrapper;
-
-typedef struct _ValueWrapper {
+struct ValueWrapper {
 	PyObject_HEAD
 	Value*		mValue;			// Pointer to the MAXScript Value
 	// Double linked list of ValueWrappers, used to provide
 	// O(n) iteration by the Protector class, and O(1) insertion
 	// and deletion.  The Protector stores the head of the list.
-	struct _ValueWrapper * mPrev, * mNext;
-} ValueWrapper;
+	ValueWrapper * mPrev, * mNext;
+};
 
 #endif		__WRAPPER_H__
