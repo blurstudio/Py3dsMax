@@ -959,9 +959,11 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 		// try to access the attribute directly
 		char* kstring = arg_list[0]->eval()->to_string();
 		
-		if ( PyObject_HasAttrString( this->mObject, kstring ) )
-			vl.output = ObjectWrapper::intern( PyObject_GetAttrString( this->mObject, kstring ) );
-
+		if ( PyObject_HasAttrString( this->mObject, kstring ) ) {
+			PyObject * attr = PyObject_GetAttrString( this->mObject, kstring );
+			vl.output = ObjectWrapper::intern( attr );
+			Py_XDECREF( attr );
+		}
 		// because maxscript does not preserve the actual case sensitivity for the property, we have to check against
 		// all possible options comparing lower case sensitvity to the keys
 		else {
@@ -990,7 +992,9 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 
 					// return the first instance in the dictionary that has matching lowercase keys
 					if ( pykstring == mxskstring ) {
-						vl.output = ObjectWrapper::intern( PyObject_GetAttr( this->mObject, key ) );
+						PyObject * attr = PyObject_GetAttr( this->mObject, key );
+						vl.output = ObjectWrapper::intern( attr );
+						Py_XDECREF( attr );
 						break;
 					}
 				}
