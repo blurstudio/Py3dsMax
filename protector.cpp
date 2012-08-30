@@ -20,7 +20,7 @@
 visible_class_instance( Protector, "PyMemProtector" );
 
 int Protector::mCount = 0;
-ValueWrapper * mFirst = 0;
+ValueWrapper * Protector::mFirst = 0;
 
 Protector::Protector()
 {}
