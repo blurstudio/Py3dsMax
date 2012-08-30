@@ -34,8 +34,8 @@ public:
 	static void unprotect( ValueWrapper * );
 
 protected:
-	int mCount;
-	ValueWrapper * mFirst;
+	static int mCount;
+	static ValueWrapper * mFirst;
 };
 
 #endif		__PROTECTOR_H__
