@@ -1,0 +1,41 @@
+<link rel="stylesheet" href="_static/blursphinx.css" type="text/css" />
+{% extends "defindex.html" %}
+{% block tables %}
+<p><strong>Parts of the documentation:</strong></p>
+<table class="contentstable" align="center"><tr>
+<td width="50%">
+  <p class="biglink"><a class="biglink" href="{{ pathto("tutorial/index") }}">Getting Started</a><br/>
+	 <span class="linkdescr">Some quick guides to get up and running with Py3dsMax</span></p>
+  <!--
+  <p class="biglink"><a class="biglink" href="{{ pathto("reference/index") }}">Documentation</a><br/>
+	 <span class="linkdescr">Reference Docs for the blurdev umbrella package</span></p>
+  -->
+</td></tr>
+</table>
+
+
+<p><strong>Indices and tables:</strong></p>
+<table class="contentstable" align="center"><tr>
+<td width="50%">
+  <p class="biglink"><a class="biglink" href="{{ pathto("genindex") }}">General Index</a><br/>
+	 <span class="linkdescr">All functions, classes, terms</span></p>
+  <p class="biglink"><a class="biglink" href="{{ pathto("search") }}">Search page</a><br/>
+	 <span class="linkdescr">Search this documentation</span></p>
+  <p class="biglink"><a class="biglink" href="{{ pathto("contents") }}">Complete Table of Contents</a><br/>
+	 <span class="linkdescr">Lists all sections and subsections</span></p>
+</td></tr>
+</table>
+
+
+<p><strong>Meta information:</strong></p>
+<table class="contentstable" align="center"><tr>
+<td width="50%">
+  <p class="biglink"><a class="biglink" href="{{ pathto("bugs") }}">Reporting bugs</a></p>
+  <p class="biglink"><a class="biglink" href="{{ pathto("copyright") }}">Copyright</a></p>
+  <!--
+  <p class="biglink"><a class="biglink" href="{{ pathto("license") }}">License</a></p>
+  -->
+</td></tr>
+</table>
+
+{% endblock %}
