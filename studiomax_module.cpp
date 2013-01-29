@@ -26,9 +26,7 @@ typedef struct {
 // ctor
 static PyObject*
 mxs_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
-	mxs* self;
-	self = (mxs*)type->tp_alloc(type, 0);
-	return (PyObject*) self;
+	return (PyObject*)type->tp_alloc(type, 0);
 }
 
 // dtor
@@ -41,27 +39,21 @@ mxs_dealloc( PyObject* self ) {
 static PyObject*
 mxs_getattro( PyObject* self, PyObject* key ) {
 	// Step 1: convert the key to a name
-	char* keystr	= PyString_AsString( key );
-	
 	MXS_PROTECT(one_value_local(name));
-	vl.name = Name::intern( keystr );
-
+	vl.name = Name::intern( PyStringToMCHAR(key).mchar() );
 	// Step 2: collect the PyObject* instance
-	PyObject* output = ObjectWrapper::py_intern( globals->get( vl.name ) );
+	PyObject * output = ObjectWrapper::py_intern( globals->get( vl.name ) );
 	MXS_CLEANUP();
-	
+
 	return output;
 }
 
 // __setattr__: set an item in the maxscript globals hash table
 static int
 mxs_setattro( PyObject* self, PyObject* key, PyObject* value ) {
-	// Step 1: convert the key to a name
-	char* keystr	= PyString_AsString( key );
-
-	// Step 2: protect the maxscript memory
+	
 	MXS_PROTECT( two_value_locals( name, result ) );
-	vl.name		= Name::intern( keystr );
+	vl.name		= Name::intern( PyStringToMCHAR(key).mchar() );
 
 	// Step 3: get a preexisting global value
 	vl.result	= globals->get( vl.name );
@@ -78,7 +70,7 @@ mxs_setattro( PyObject* self, PyObject* key, PyObject* value ) {
 
 	// Step 5: cleanup the maxscript memory
 	MXS_CLEANUP();
-
+	
 	return 0;
 }
 
@@ -133,9 +125,7 @@ typedef struct {
 // ctor
 static PyObject*
 AtTime_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
-	AtTime* self;
-	self = (AtTime*)type->tp_alloc(type, 0);
-	return (PyObject*) self;
+	return (PyObject*)type->tp_alloc(type, 0);
 }
 
 static PyObject * AtTime_call( AtTime* self, PyObject* args, PyObject* kwds );
@@ -350,7 +340,7 @@ studiomax_dispatchmessage( PyObject* self, PyObject* args ) {
 // Py3dsMax.redo() - redoes the last action
 static PyObject*
 studiomax_redo( PyObject* self ) {
-	ExecuteMAXScriptScript( "max redo" );
+	ExecuteMAXScriptScript( L"max redo" );
 
 	Py_INCREF( Py_True );
 	return Py_True;
@@ -391,7 +381,7 @@ studiomax_runScript( PyObject* self, PyObject* args ) {
 // Py3dsMax.undo() - undoes the last action
 static PyObject*
 studiomax_undo( PyObject* self ) {
-	ExecuteMAXScriptScript( "max undo" );
+	ExecuteMAXScriptScript( L"max undo" );
 
 	Py_INCREF( Py_True );
 	return Py_True;
@@ -409,9 +399,15 @@ studiomax_undoOn( PyObject* self ) {
 // Py3dsMax.undoOff() - set the undo system to be off
 static PyObject*
 studiomax_undoOff( PyObject* self, PyObject* args ) {
-	char* name;
+	MCHAR* name;
 	
-	if ( !PyArg_ParseTuple( args, "s", &name ) )
+#ifdef UNICODE
+	const char * format = "u";
+#else
+	const char * format = "s";
+#endif
+	
+	if ( !PyArg_ParseTuple( args, format, &name ) )
 		return NULL;
 
 	theHold.Accept( name );
@@ -654,5 +650,5 @@ init_module(void) {
 	Py_INCREF(&AtTimeType);
 	PyModule_AddObject( module, "AtTime", (PyObject*)&AtTimeType );
 	
-	mprintf( "[blurPython] DLL has been successfully loaded.\n" );
+	mprintf( L"[blurPython] DLL has been successfully loaded.\n" );
 }

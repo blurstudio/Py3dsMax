@@ -16,16 +16,18 @@
 #define		__MACROS_H__
 
 #include "Python.h"
+#include "imports.h"
 
-char * pythonExceptionTraceback( bool clearException = true );
+// Returns pointer to new data owned by caller
+MCHAR * pythonExceptionTraceback( bool clearException = true );
 
 class PyExcRuntimeError : public RuntimeError
 {
 public:
-	PyExcRuntimeError( char * error );
+	PyExcRuntimeError( MCHAR * error );
 	~PyExcRuntimeError();
 private:
-	char * error;
+	MCHAR * error;
 };
 
 #define		DEBUG_MODE						true
@@ -66,7 +68,7 @@ private:
 // Call this macro to clean up any python errors that may have occurred
 // TODO: Test for quiet mode
 #define PY_ERROR_PRINT_THROW() \
-	char * exc_str = pythonExceptionTraceback( /*clearException=*/ false ); \
+	MCHAR * exc_str = pythonExceptionTraceback( /*clearException=*/ false ); \
 	PyErr_Print(); \
 	throw PyExcRuntimeError( exc_str );
 

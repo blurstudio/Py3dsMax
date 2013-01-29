@@ -3,7 +3,7 @@
 
 #include "IPathConfigMgr.h"
 
-// the initialize_blurpython function is ofund in the studiomax_module file
+// the initialize_blurpython function is found in the studiomax_module file
 PyMODINIT_FUNC initialize_blurpython();
 
 void BlurPythonInit() {

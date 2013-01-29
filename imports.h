@@ -14,8 +14,15 @@
 #ifndef	__IMPORTS_H__
 #define __IMPORTS_H__
 
+
+// As of 2013 max is compiled with UNICODE enabled - MCHAR == TCHAR == wchar == Py_UNICODE, utf16
+#ifdef __MAXSCRIPT_2013__
+#define _UNICODE
+#define UNICODE
+#endif
+
 // max 2012 switched the name of maxscript includes
-#ifdef __MAXSCRIPT_2012__
+#if __MAXSCRIPT_2012__ || __MAXSCRIPT_2013__
 
 #include "foundation/numbers.h"
 #include "foundation/structs.h"

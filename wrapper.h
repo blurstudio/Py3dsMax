@@ -14,12 +14,14 @@
 #ifndef		__WRAPPER_H__
 #define		__WRAPPER_H__
 
+#include "imports.h"
 
 visible_class( ObjectWrapper );
 class ObjectWrapper : public Value {
 private:
 	PyObject*						mObject;
 	PyObject*						mObjectDict;
+	PyObject*						mPyString;
 public:
 	ObjectWrapper( PyObject* obj = NULL );
 	~ObjectWrapper();
@@ -41,7 +43,7 @@ public:
 	Value*			set_property( Value** arg_list, int count );
 	PyObject*		object();
 	void			sprin1( CharStream* s );
-	char*			to_string();
+	const MCHAR*			to_string();
 
 	BOOL			_is_collection()	{ return 1; }
 	BOOL			_is_function()		{ return 1; }
@@ -65,6 +67,48 @@ struct ValueWrapper {
 	// O(n) iteration by the Protector class, and O(1) insertion
 	// and deletion.  The Protector stores the head of the list.
 	ValueWrapper * mPrev, * mNext;
+};
+
+
+// Converts a python string object to MCHAR *
+class PyStringToMCHAR {
+public:
+	PyStringToMCHAR( PyObject * );
+	~PyStringToMCHAR();
+	MCHAR * mchar();
+protected:
+	PyObject * mObject;
+};
+
+// Converts am MCHAR * to a python string
+class MCharToPyString {
+public:
+	MCharToPyString( const MCHAR *, const char * enc = "ascii" );
+	~MCharToPyString();
+	// Returns borrowed ref
+	PyObject * pyString();
+	// Returns a new ref
+	PyObject * pyStringRef();
+	// Returns the internal data of the python string, same as PyString_AsString(pyString());
+	const char * data();
+protected:
+#ifndef UNICODE
+	const MCHAR * mMChars;
+#endif
+	PyObject * mObject;
+};
+
+// Converts and MCHAR * to a python unicode object
+class MCharToPyUni {
+public:
+	MCharToPyUni( const MCHAR * );
+	~MCharToPyUni();
+	// Returns a borrowed ref
+	PyObject * pyUni();
+	// Returns a new ref
+	PyObject * pyUniRef();
+protected:
+	PyObject * mObject;
 };
 
 #endif		__WRAPPER_H__

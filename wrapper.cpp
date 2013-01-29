@@ -29,6 +29,106 @@ typedef	intargfunc		ssizeargfunc;
 
 #endif
 
+
+PyStringToMCHAR::PyStringToMCHAR( PyObject * pyString )
+: mObject( 0 )
+{
+#ifdef UNICODE
+	mObject = PyUnicode_Decode( PyString_AsString(pyString), PyString_Size(pyString), "ascii", NULL );
+#else
+	mObject = pyString;
+	Py_XINCREF(mObject);
+#endif
+}
+
+PyStringToMCHAR::~PyStringToMCHAR()
+{
+	Py_XDECREF(mObject);
+}
+
+MCHAR * PyStringToMCHAR::mchar()
+{
+#ifdef UNICODE
+	return mObject ? PyUnicode_AsUnicode(mObject) : 0;
+#else
+	return mObject ? PyString_AsString(mObject) : 0;
+#endif
+}
+
+
+MCharToPyString::MCharToPyString( const MCHAR * mchar, const char * enc )
+#ifndef UNICODE
+, mMChars( mchar )
+#endif
+: mObject( 0 )
+{
+#ifdef UNICODE
+	mObject = PyUnicode_Encode(mchar,_tcslen(mchar)*sizeof(MCHAR),enc,NULL);
+#endif
+}
+
+MCharToPyString::~MCharToPyString()
+{
+	Py_XDECREF(mObject);
+}
+
+PyObject * MCharToPyString::pyString()
+{
+#ifndef UNICODE
+	if( !mObject )
+		mObject = PyString_FromString(mMChars);
+#endif
+	return mObject;
+}
+
+PyObject * MCharToPyString::pyStringRef()
+{
+#ifndef UNICODE
+	if( !mObject )
+		mObject = PyString_FromString(mMChars);
+#endif
+	Py_XINCREF(mObject);
+	return mObject;
+}
+
+const char * MCharToPyString::data()
+{
+	if( mObject )
+		return PyString_AsString(mObject);
+#ifdef UNICODE
+	return 0;
+#else
+	return mMChars;
+#endif
+}
+
+MCharToPyUni::MCharToPyUni( const MCHAR * mchar )
+: mObject( 0 )
+{
+#ifdef UNICODE
+	mObject = PyUnicode_FromUnicode(mchar,_tcslen(mchar));
+#else
+	mObject = PyUnicode_Decode(mchar,strlen(mchar),"utf8",NULL);
+#endif
+}
+
+MCharToPyUni::~MCharToPyUni()
+{
+	Py_XDECREF(mObject);
+}
+
+PyObject * MCharToPyUni::pyUni()
+{
+	return mObject;
+}
+
+PyObject * MCharToPyUni::pyUniRef()
+{
+	Py_XINCREF(mObject);
+	return mObject;
+}
+
+
 //---------------------------------------------------------------
 // ValueWrapper Implementation
 //---------------------------------------------------------------
@@ -98,7 +198,10 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 				mxs_args[arg_count]	= &keyarg_marker;
 
 				while ( PyDict_Next(kwds, &pos, &pkey, &pvalue ) ) {
-					mxs_args[ arg_count + 1 + (key_pos*2) ] = Name::intern( PyString_AsString( pkey ) );
+					{
+						PyStringToMCHAR mchar(pkey);
+						mxs_args[ arg_count + 1 + (key_pos*2) ] = Name::intern( mchar.mchar() );
+					}
 					mxs_args[ arg_count + 2 + (key_pos*2) ] = ObjectWrapper::intern( pvalue );
 					key_pos++;
 				}
@@ -112,7 +215,7 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 			try { vl.result = vl.method->apply( mxs_args, mxs_count )->get_heap_ptr(); }
 			catch ( ... ) {
 				MXS_CLEARERRORS();
-				PyErr_SetString( PyExc_RuntimeError, vl.log->to_string() );
+				PyErr_SetString( PyExc_RuntimeError, MCharToPyString(vl.log->to_string()).data() );
 				vl.result = NULL;
 			}
 
@@ -124,7 +227,7 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 			try { vl.result = vl.method->apply( NULL, 0 ); }
 			catch ( ... ) {
 				MXS_CLEARERRORS();
-				PyErr_SetString( PyExc_RuntimeError, vl.log->to_string() );
+				PyErr_SetString( PyExc_RuntimeError, MCharToPyString(vl.log->to_string()).data() );
 				vl.result = NULL;
 			}
 		}
@@ -195,8 +298,9 @@ ValueWrapper_str( ValueWrapper* self ) {
 
 	// Step 3: check for simple conversions
 	PyObject* output = NULL;
-	if ( is_name( vl.mxs_check ) || is_string( vl.mxs_check ) ) 
-		output = PyString_FromString( vl.mxs_check->to_string() );
+	if ( is_name( vl.mxs_check ) || is_string( vl.mxs_check ) ) {
+		output = MCharToPyString(vl.mxs_check->to_string()).pyStringRef();
+	}
 	
 	// Step 4: block recursive struct printouts
 	else if ( is_struct( vl.mxs_check ) )
@@ -207,7 +311,7 @@ ValueWrapper_str( ValueWrapper* self ) {
 		vl.mxs_stream = new StringStream();
 		try {
 			vl.mxs_check->sprin1( vl.mxs_stream );
-			output = PyString_FromString( vl.mxs_stream->to_string() );
+			output = MCharToPyString(vl.mxs_stream->to_string()).pyStringRef();
 		}
 		MXS_CATCHERRORS();
 	}
@@ -244,7 +348,7 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 
 	// return the default maxscript value
 	one_value_local(result);
-	try { vl.result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(key) ); }
+	try { vl.result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(PyStringToMCHAR(PyString_FromString(key)).mchar()) ); }
 	catch ( ... ) {
 		PyObject * self_str = ValueWrapper_str(self);
 		PyErr_Format( PyExc_AttributeError, "%s is not a property of %s", key, PyString_AsString(self_str) );
@@ -262,7 +366,7 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 static int
 ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
 	bool success = true;
-	try { self->mValue->eval()->_set_property( Name::intern(key), ObjectWrapper::intern(value) ); }
+	try { self->mValue->eval()->_set_property( Name::intern(PyStringToMCHAR(PyString_FromString(key)).mchar()), ObjectWrapper::intern(value) ); }
 	catch ( ... ) { success = false; }
 	
 	if ( success ) {
@@ -684,7 +788,7 @@ ValueWrapper_property( PyObject* self, PyObject* args ) {
 		return NULL;
 
 	one_value_local(result);
-	try { vl.result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(propName) ); }
+	try { vl.result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(PyStringToMCHAR(PyString_FromString(propName)).mchar()) ); }
 	catch ( ... ) {
 		PyObject * self_str = ValueWrapper_str((ValueWrapper*)self);
 		PyErr_Format( PyExc_AttributeError, "%s is not a property of %s", propName, PyString_AsString(self_str) );
@@ -708,7 +812,7 @@ ValueWrapper_setProperty( PyObject* self, PyObject* args ) {
 		return NULL;
 
 	bool success = true;
-	try { ((ValueWrapper*) self)->mValue->eval()->_set_property( Name::intern(propName), ObjectWrapper::intern(propValue) ); }
+	try { ((ValueWrapper*) self)->mValue->eval()->_set_property( Name::intern(PyStringToMCHAR(PyString_FromString(propName)).mchar()), ObjectWrapper::intern(propValue) ); }
 	catch ( ... ) { success = false; }
 
 	if ( success ) {
@@ -842,27 +946,28 @@ static PyTypeObject ValueWrapperType = {
 visible_class_instance( ObjectWrapper, "PyObjectWrapper" );
 
 // ctor
-ObjectWrapper::ObjectWrapper( PyObject* obj ) {
-	this->tag			= class_tag(ObjectWrapper);
-	this->mObject		= obj;
-	this->mObjectDict	= NULL;
-
+ObjectWrapper::ObjectWrapper( PyObject* obj )
+: mObject( obj )
+, mObjectDict( 0 )
+, mPyString( 0 )
+{
+	tag = class_tag(ObjectWrapper);
 	Py_XINCREF(obj);
 }
 
 // dtor
-ObjectWrapper::~ObjectWrapper() {
-	Py_XDECREF( this->mObject );
-	Py_XDECREF( this->mObjectDict );
-	this->mObject		= NULL;
-	this->mObjectDict	= NULL;
+ObjectWrapper::~ObjectWrapper()
+{
+	Py_XDECREF( mObject );
+	Py_XDECREF( mObjectDict );
+	Py_XDECREF( mPyString );
 }
 
 // __call__ function: call a python object with maxscript values
 Value*
 ObjectWrapper::apply( Value** arg_list, int count, CallContext* cc ) {
 	// Step 1: Make sure this object is callable
-	if ( this->mObject && PyCallable_Check( this->mObject ) ) {
+	if ( mObject && PyCallable_Check( mObject ) ) {
 		// Step 2; protect the maxscript memory
 		MXS_PROTECT( one_value_local( output ) );
 
@@ -891,11 +996,11 @@ ObjectWrapper::apply( Value** arg_list, int count, CallContext* cc ) {
 		if ( py_count != count ) {
 			kwds = PyDict_New();
 			for ( int i = py_count + 1; i < count; i += 2 )
-				PyDict_SetItem( kwds, PyString_FromString( arg_list[i]->eval()->to_string() ), ObjectWrapper::py_intern( arg_list[i+1]->eval() ) );
+				PyDict_SetItem( kwds, MCharToPyString( arg_list[i]->eval()->to_string() ).pyString(), ObjectWrapper::py_intern( arg_list[i+1]->eval() ) );
 		}
 
 		// Step 7: execture the python call
-		py_result = PyObject_Call( this->mObject, args, kwds );
+		py_result = PyObject_Call( mObject, args, kwds );
 		if ( PyErr_Occurred() ) {
 			MXS_CLEARERRORS();
 			Py_XDECREF( args );
@@ -907,7 +1012,7 @@ ObjectWrapper::apply( Value** arg_list, int count, CallContext* cc ) {
 		// Step 8: convert the result to a value
 		
 		if ( py_result ) { vl.output = ObjectWrapper::intern( py_result ); }
-		else { mprintf( "Python Error: could not properly execute python function.\n" ); }
+		else { mprintf( _T("Python Error: could not properly execute python function.\n") ); }
 
 		// Step 9: release the python memory
 		Py_XDECREF( args );
@@ -947,10 +1052,10 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 	do {
 		// Step 2: get default properties
 		if ( arg_list[0] == n_count ) {
-			if ( PyMapping_Check( this->mObject ) )
-				vl.output = Integer::intern( PyMapping_Length( this->mObject ) );
-			else if ( PySequence_Check( this->mObject ) )
-				vl.output = Integer::intern( PySequence_Length( this->mObject ) );
+			if ( PyMapping_Check( mObject ) )
+				vl.output = Integer::intern( PyMapping_Length( mObject ) );
+			else if ( PySequence_Check( mObject ) )
+				vl.output = Integer::intern( PySequence_Length( mObject ) );
 			else
 				vl.output = Integer::intern( 0 );
 			break;
@@ -958,10 +1063,10 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 
 		// Step 3: lookup by keyword
 		// try to access the attribute directly
-		char* kstring = arg_list[0]->eval()->to_string();
-		
-		if ( PyObject_HasAttrString( this->mObject, kstring ) ) {
-			PyObject * attr = PyObject_GetAttrString( this->mObject, kstring );
+		const MCHAR * m_key = arg_list[0]->eval()->to_string();
+		MCharToPyString pystr(m_key);
+		if ( PyObject_HasAttr( mObject, pystr.pyString() ) ) {
+			PyObject * attr = PyObject_GetAttr( mObject, pystr.pyString() );
 			vl.output = ObjectWrapper::intern( attr );
 			Py_XDECREF( attr );
 			break;
@@ -969,13 +1074,14 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 				
 		// In order to avoid clashes with maxscript keywords we allow a trailing underscore to be silently removed
 		{
+			const char * kstring = pystr.data();
 			int keyLen = strlen(kstring);
 			if( kstring[keyLen-1] == '_' ) {
 				char * tmpKey = new char[keyLen];
 				strncpy(tmpKey, kstring, keyLen-1);
 				tmpKey[keyLen-1] = 0;
-				if ( PyObject_HasAttrString( this->mObject, tmpKey ) ) {
-					PyObject * attr = PyObject_GetAttrString( this->mObject, tmpKey );
+				if ( PyObject_HasAttrString( mObject, tmpKey ) ) {
+					PyObject * attr = PyObject_GetAttrString( mObject, tmpKey );
 					vl.output = ObjectWrapper::intern( attr );
 					delete [] tmpKey;
 					Py_XDECREF( attr );
@@ -985,34 +1091,35 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 			}
 		}
 				
-		// because maxscript does not preserve the actual case sensitivity for the property, we have to check against
-		// all possible options comparing lower case sensitvity to the keys
-		// create a lowercase version of the maxscript key
-		TSTR mxskstring = TSTR(kstring);
-		mxskstring.toLower();
 
-		if ( this->mObjectDict == NULL ) {
+		if ( mObjectDict == NULL ) {
 			// loop through the internal dictionary comparing the lowercase attributes to see if we have one
-			PyObject **dictptr = _PyObject_GetDictPtr(this->mObject);
+			PyObject **dictptr = _PyObject_GetDictPtr(mObject);
 			if ( dictptr != NULL ) {
-				this->mObjectDict = *dictptr;
-				Py_XINCREF(this->mObjectDict);
+				mObjectDict = *dictptr;
+				Py_XINCREF(mObjectDict);
 			}
 		}
 
-		if ( this->mObjectDict != NULL ) {
+		if ( mObjectDict != NULL ) {
 			// These will be borrowed references during the loop
 			PyObject *key, *value;
 			Py_ssize_t pos = 0;
+			// because maxscript does not preserve the actual case sensitivity for the property, we have to check against
+			// all possible options comparing lower case sensitvity to the keys
+			// create a lowercase version of the maxscript key
+			TSTR mxskstring = TSTR(m_key);
+			mxskstring.toLower();
 
-			while ( PyDict_Next( this->mObjectDict, &pos, &key, &value ) ) {
+			while ( PyDict_Next( mObjectDict, &pos, &key, &value ) ) {
 				// create a lowercase version of the python key
-				TSTR pykstring = TSTR(PyString_AsString(key));
+				PyStringToMCHAR mkey(key);
+				TSTR pykstring = TSTR(mkey.mchar());
 				pykstring.toLower();
 
 				// return the first instance in the dictionary that has matching lowercase keys
 				if ( pykstring == mxskstring ) {
-					PyObject * attr = PyObject_GetAttr( this->mObject, key );
+					PyObject * attr = PyObject_GetAttr( mObject, key );
 					vl.output = ObjectWrapper::intern( attr );
 					Py_XDECREF( attr );
 					break;
@@ -1030,10 +1137,10 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 Value*
 ObjectWrapper::set_property( Value** arg_list, int count ) {
 	// Step 1: lookup by keyword
-	char* kstring = arg_list[1]->eval()->to_string();
-
-	if ( PyObject_HasAttrString( this->mObject, kstring ) )
-		PyObject_SetAttrString( this->mObject, kstring, ObjectWrapper::py_intern( arg_list[0]->eval() ) );
+	const MCHAR* kstring = arg_list[1]->eval()->to_string();
+	MCharToPyString pykstring(kstring);
+	if ( PyObject_HasAttr( mObject, pykstring.pyString() ) )
+		PyObject_SetAttr( mObject, pykstring.pyString(), ObjectWrapper::py_intern( arg_list[0]->eval() ) );
 
 	return &ok;
 }
@@ -1050,14 +1157,16 @@ ObjectWrapper::get_vf( Value** arg_list, int count ) {
 	vl.key = arg_list[0]->eval();
 
 	try {
-		if ( is_number( vl.key ) ) { py_key = PyInt_FromLong( vl.key->to_int() ); }
-		else					{ py_key = PyString_FromString( vl.key->to_string() ); }
+		if( is_number(vl.key) )
+			py_key = PyInt_FromLong( vl.key->to_int() );
+		else
+			py_key = MCharToPyString(vl.key->to_string()).pyStringRef();
 	}
 	MXS_CATCHERRORS();
 
 	// Step 2: call the getItem method for the python object
-	if ( py_key && this->mObject ) {
-		py_result = PyObject_GetItem( this->mObject, py_key );
+	if ( py_key && mObject ) {
+		py_result = PyObject_GetItem( mObject, py_key );
 	}
 
 	// Step 4: convert the return to a maxscript value
@@ -1074,7 +1183,7 @@ ObjectWrapper::get_vf( Value** arg_list, int count ) {
 // object function: return the python object for this instance
 PyObject*
 ObjectWrapper::object() {
-	return this->mObject;
+	return mObject;
 }
 
 // __setitem__ function: sets an item for a python sequence/mapping type
@@ -1087,25 +1196,42 @@ ObjectWrapper::put_vf( Value** arg_list, int count ) {
 // print function: prints this value to the screen
 void
 ObjectWrapper::sprin1( CharStream* s ) {
-	s->puts( this->to_string() );
+	s->puts( to_string() );
 }
 
 // __str__ function: converts this item to a string
-char*
+const MCHAR*
 ObjectWrapper::to_string() {
-	// Step 1: check to make sure we have an object
-	if ( this->mObject ) {
-		// Step 2: pull the python object string for this object
-		PyObject* py_string = PyObject_Str( this->mObject );
-		char* out = ( py_string ) ? PyString_AsString( py_string ) : "<<python: error converting value to string>>";
-		PyErr_Clear();
-		
-		// Step 3: release the python memory
-		Py_XDECREF( py_string );
+	if ( mObject ) {
+#ifdef UNICODE
+		if( PyUnicode_Check( mObject ) )
+			return PyUnicode_AsUnicode( mObject );
+#else
+		if( PyString_Check( mObject ) )
+			return PyString_AsString( mObject );
+#endif
 
-		return out;
+		if( !mPyString ) {
+			mPyString = PyObject_Str( mObject );
+#ifdef UNICODE
+			if( mPyString ) {
+				PyObject * tmp = PyUnicode_FromObject(mPyString);
+				Py_DECREF( mPyString );
+				mPyString = tmp;
+			}
+#endif
+			if( !mPyString )
+				PyErr_Clear();
+		}
+
+		if( mPyString )
+#ifdef UNICODE
+			return PyUnicode_AsUnicode( mPyString );
+#else
+			return PyString_AsString( mPyString );
+#endif
 	}
-	return "<<python: error accessing wrapper object>>";
+	return _T("<<python: error accessing wrapper object>>");
 }
 
 // Static methods
@@ -1127,7 +1253,7 @@ ObjectWrapper::intern( PyObject* obj ) {
 	// Step 3: convert strings/unicodes
 	else if ( obj->ob_type == &PyString_Type || obj->ob_type == &PyUnicode_Type ) {
 		one_value_local(output);
-		vl.output = new String(PyString_AsString( obj ));
+		vl.output = new String(PyStringToMCHAR(obj).mchar());
 		return_value(vl.output);
 	}
 
@@ -1187,7 +1313,7 @@ ObjectWrapper::init() {
 void
 ObjectWrapper::log( PyObject* obj ) {
 	PyObject * self_str = ValueWrapper_str((ValueWrapper*)obj);
-	mprintf( "%s\n", PyString_AsString(self_str) );
+	mprintf( _T("%s\n"), PyStringToMCHAR(self_str).mchar() );
 	Py_DECREF(self_str);
 }
 
@@ -1203,9 +1329,9 @@ ObjectWrapper::handleMaxscriptError() {
 	// process the current exception
 	if ( e ) {
 		one_typed_value_local( StringStream* buffer );
-		vl.buffer = new StringStream( "MAXScript Error has occurred: \n" );
+		vl.buffer = new StringStream( _T("MAXScript Error has occurred: \n") );
 		e->sprin1(vl.buffer);
-		PyErr_SetString( PyExc_RuntimeError, vl.buffer->to_string() );
+		PyErr_SetString( PyExc_RuntimeError, MCharToPyString(vl.buffer->to_string()).data() );
 		pop_value_locals();
 	}
 	// set the exception to unknown
@@ -1235,9 +1361,12 @@ ObjectWrapper::py_intern( Value* val ) {
 	}
 
 	// Step 4: check for strings
-	else if ( is_string( mxs_check ) )
-		return PyString_FromString( mxs_check->to_string() );
-
+	else if ( is_string( mxs_check ) ) {
+		MCharToPyString pyString(mxs_check->to_string());
+		Py_XINCREF(pyString.pyString());
+		return pyString.pyString();
+	}
+	
 	// Step 5: check for integers
 	else if ( is_integer( mxs_check ) )
 		return PyInt_FromLong( mxs_check->to_int() );

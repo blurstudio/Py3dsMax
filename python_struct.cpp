@@ -21,7 +21,7 @@
 #include <pythonrun.h>
 
 // updated to work with max 2012's new maxscript organization
-#ifdef __MAXSCRIPT_2012__
+#if __MAXSCRIPT_2012__ || __MAXSCRIPT_2013__
 
 #include "macros/define_external_functions.h"
 #include "macros/define_instantiation_functions.h"
@@ -56,19 +56,23 @@ import_cf( Value** arg_list, int count ) {
 	MXS_EVAL( arg_list[0], vl.mxs_check );
 
 	// Step 4: calculate the python module name to import
-	char* module_name = NULL;
+	const MCHAR* module_name = NULL;
 	try { module_name = vl.mxs_check->to_string(); }
 	MXS_CATCHERRORS();
 
 	// Step 5: import the module
 	if ( module_name ) {
-		PyObject* module = PyImport_ImportModule( module_name );
-		PY_ERROR_PROPAGATE_MXS_CLEANUP();
+		PyObject* utf8 = PyUnicode_EncodeUTF8(module_name,_tcslen(module_name),NULL);
+		if( utf8 ) {
+			PyObject* module = PyImport_Import( utf8 );
+			vl.mxs_return = ( module ) ? ObjectWrapper::intern( module ) : &undefined;
+			Py_DECREF(utf8);
+		}
 
-		vl.mxs_return = ( module ) ? ObjectWrapper::intern( module ) : &undefined;
+		PY_ERROR_PROPAGATE_MXS_CLEANUP();
 	}
 	else {
-		mprintf( "python.import() error: importing modules must be done with a string value\n" );
+		mprintf( L"python.import() error: importing modules must be done with a string value\n" );
 		vl.mxs_return = &undefined;
 	}
 	MXS_RETURN( vl.mxs_return );
@@ -89,7 +93,7 @@ reload_cf( Value** arg_list, int count ) {
 		PyImport_ReloadModule( ((ObjectWrapper*) vl.mxs_check)->object() );
 		PY_ERROR_PROPAGATE_MXS_CLEANUP();
 	}
-	else { mprintf( "python.reload() error: you need to supply a valid python module to reload\n" ); }
+	else { mprintf( L"python.reload() error: you need to supply a valid python module to reload\n" ); }
 
 	MXS_CLEANUP();
 	return &ok;	
@@ -106,8 +110,14 @@ run_cf( Value** arg_list, int count ) {
 	MXS_EVAL( arg_list[0], vl.mxs_filename );
 
 	// Step 2: create a python file based on the filename
-	char* filename		= vl.mxs_filename->to_string();
-	PyObject* py_file	= PyFile_FromString( filename, "r" );
+	const MCHAR * filename	= vl.mxs_filename->to_string();
+	PyObject* py_name = PyUnicode_FromUnicode(filename,_tcslen(filename));
+	PyObject* args = PyTuple_New(2);
+	PyTuple_SET_ITEM(args,0,py_name);
+	PyTuple_SET_ITEM(args,1,PyString_FromString("r"));
+
+	PyObject* py_file = PyObject_Call((PyObject*)&PyFile_Type, args, NULL);
+	Py_DECREF(args);
 
 	// Step 3: check to make sure the file exists
 	if ( !py_file ) {
@@ -115,12 +125,15 @@ run_cf( Value** arg_list, int count ) {
 		return &false_value;
 	}
 
+	PyObject * filename_utf8 = PyUnicode_AsEncodedString(py_name,"utf8",NULL);
+
 	// Step 4: run the file
-	PyRun_SimpleFile( PyFile_AsFile(py_file), filename );
+	PyRun_SimpleFile( PyFile_AsFile(py_file), PyString_AsString(filename_utf8) );
 	PY_ERROR_PROPAGATE_MXS_CLEANUP();
 
 	// Step 5: cleanup the memory
-	Py_XDECREF( py_file );
+	Py_DECREF( py_file );
+	Py_DECREF( filename_utf8 );
 	MXS_CLEANUP();
 	
 	return &true_value;
@@ -137,7 +150,7 @@ exec_cf( Value** arg_list, int count ) {
 	MXS_EVAL( arg_list[0], vl.mxs_command );
 
 	// Step 2: create a python file based on the filename
-	char* command	= NULL;
+	const MCHAR* command	= NULL;
 	try { command	= vl.mxs_command->to_string(); }
 	MXS_CATCHERRORS();
 
@@ -147,9 +160,13 @@ exec_cf( Value** arg_list, int count ) {
 		return &false_value;
 	}
 
-	// Step 4: run the command
-	PyRun_SimpleString( command );
-	PY_ERROR_PROPAGATE_MXS_CLEANUP();
+	{
+		MCharToPyString ascii(command);
+		if( ascii.pyString() )
+			PyRun_SimpleString( ascii.data() );
+
+		PY_ERROR_PROPAGATE_MXS_CLEANUP();
+	}
 
 	// Step 5: cleanup the memory
 	MXS_CLEANUP();
@@ -157,7 +174,7 @@ exec_cf( Value** arg_list, int count ) {
 	return &ok;
 }
 
-PyExcRuntimeError::PyExcRuntimeError( char * _error )
+PyExcRuntimeError::PyExcRuntimeError( MCHAR * _error )
 : RuntimeError( _error )
 , error( _error )
 {}
@@ -168,13 +185,13 @@ PyExcRuntimeError::~PyExcRuntimeError()
 }
 
 // Returns a new string
-char * pythonExceptionTraceback( bool clearException )
+MCHAR * pythonExceptionTraceback( bool clearException )
 {
 	/*
 		import traceback
 		return '\n'.join(traceback.format_exc()).encode('ascii','replace')
 	*/
-	char * ret = 0;
+	MCHAR * ret = 0;
 	bool success = false;
 
 	PyObject * type, * value, * traceback;
@@ -194,6 +211,9 @@ char * pythonExceptionTraceback( bool clearException )
 
 					PyObject * retUni = PyUnicode_Join(separator, traceback_list);
 					if( retUni ) {
+#ifdef UNICODE
+						ret = _tcsdup( PyUnicode_AsUnicode(retUni) );
+#else
 						PyObject * retAscii = PyUnicode_AsEncodedString(retUni, "ascii", "replace");
 						if( retAscii ) {
 							Py_ssize_t len = 0;
@@ -210,24 +230,25 @@ char * pythonExceptionTraceback( bool clearException )
 							ret = strdup( "Uhoh, encoding exception to ascii failed" );
 							success = false;
 						}
+#endif
 						Py_DECREF(retUni);
 
 					} else
-						ret = strdup("PyUnicode_Join failed");
+						ret = _tcsdup(L"PyUnicode_Join failed");
 
 					Py_DECREF(separator);
 				} else
-					ret = strdup("PyUnicode_FromString failed");
+					ret = _tcsdup(L"PyUnicode_FromString failed");
 
 				Py_DECREF(traceback_list);
 			} else
-				ret = strdup("Failure calling traceback.format_exception");
+				ret = _tcsdup(L"Failure calling traceback.format_exception");
 
 			Py_DECREF(traceback_module);
 		} else
-			ret = strdup("Unable to load the traceback module, can't get exception text");
+			ret = _tcsdup(L"Unable to load the traceback module, can't get exception text");
 	} else
-		ret = strdup("pythonExceptionTraceback called, but no exception set");
+		ret = _tcsdup(L"pythonExceptionTraceback called, but no exception set");
 
 	if( clearException ) {
 		Py_DECREF(type);
