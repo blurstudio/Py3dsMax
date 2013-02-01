@@ -111,30 +111,34 @@ run_cf( Value** arg_list, int count ) {
 
 	// Step 2: create a python file based on the filename
 	const MCHAR * filename	= vl.mxs_filename->to_string();
+	//mprintf( _T("Got Filename to run: %s\n"), filename );
+	
 	PyObject* py_name = PyUnicode_FromUnicode(filename,_tcslen(filename));
+	Py_INCREF(py_name);
 	PyObject* args = PyTuple_New(2);
 	PyTuple_SET_ITEM(args,0,py_name);
 	PyTuple_SET_ITEM(args,1,PyString_FromString("r"));
-
+	//mprintf( _T("Arg tuple created, creating python file object\n") );
+	
 	PyObject* py_file = PyObject_Call((PyObject*)&PyFile_Type, args, NULL);
 	Py_DECREF(args);
-
-	// Step 3: check to make sure the file exists
-	if ( !py_file ) {
-		MXS_CLEANUP();
-		return &false_value;
+	if( !py_file ) {
+		mprintf( _T("Call to python file object creation failed\n") );
+		PY_ERROR_PROPAGATE_MXS_CLEANUP();
 	}
-
+	
 	PyObject * filename_utf8 = PyUnicode_AsEncodedString(py_name,"utf8",NULL);
-
+	Py_DECREF(py_name);
+	
+	//mprintf( _T("File opened, calling PyRun_SimpleFile\n") );
 	// Step 4: run the file
 	PyRun_SimpleFile( PyFile_AsFile(py_file), PyString_AsString(filename_utf8) );
-	PY_ERROR_PROPAGATE_MXS_CLEANUP();
 
+	//mprintf( _T("File ran, cleaning up\n") );
 	// Step 5: cleanup the memory
 	Py_DECREF( py_file );
 	Py_DECREF( filename_utf8 );
-	MXS_CLEANUP();
+	PY_ERROR_PROPAGATE_MXS_CLEANUP();
 	
 	return &true_value;
 }

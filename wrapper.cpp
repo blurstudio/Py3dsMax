@@ -63,7 +63,7 @@ MCharToPyString::MCharToPyString( const MCHAR * mchar, const char * enc )
 : mObject( 0 )
 {
 #ifdef UNICODE
-	mObject = PyUnicode_Encode(mchar,_tcslen(mchar)*sizeof(MCHAR),enc,NULL);
+	mObject = PyUnicode_Encode(mchar,_tcslen(mchar),enc,NULL);
 #endif
 }
 
@@ -212,12 +212,33 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 			}
 
 			// Step 9: call the method and use try/catch to protect the memory
-			try { vl.result = vl.method->apply( mxs_args, mxs_count )->get_heap_ptr(); }
+			try {
+				vl.result = vl.method->apply( mxs_args, mxs_count )->get_heap_ptr();
+			}
+			catch ( MAXScriptException& e ) {
+				//show_source_pos();
+				StringStream* buffer = new StringStream(_T("Maxscript error has occurred while calling function: ") );
+				buffer->puts(vl.log->to_string());
+				const MCHAR * filename = thread_local(source_file) ? thread_local(source_file)->to_string() : 0;
+				buffer->printf(_T("-- %s %i %i\n"), filename ? filename : _T("unknown file"), thread_local(source_pos), thread_local(source_line) );
+				e.sprin1(buffer);
+				MCharToPyString pybuf(buffer->to_string());
+				PyErr_SetString( PyExc_RuntimeError, pybuf.data() );
+				restore_current_frames();
+				clear_error_source_data();
+				MAXScript_signals = 0;
+				return 0;
+			}
 			catch ( ... ) {
 				MXS_CLEARERRORS();
-				PyErr_SetString( PyExc_RuntimeError, MCharToPyString(vl.log->to_string()).data() );
-				vl.result = NULL;
+				PyErr_SetString( PyExc_RuntimeError, "Unknown MAXScript Error Occurred" );
 			}
+/*			catch ( ... ) {
+				MXS_CLEARERRORS();
+				MCharToPyString pylog(vl.log->to_string());
+				PyErr_SetString( PyExc_RuntimeError, pylog.data() );
+				vl.result = NULL;
+			} */
 
 			// clear the value local memory
 			pop_value_local_array(mxs_args);
@@ -227,7 +248,8 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 			try { vl.result = vl.method->apply( NULL, 0 ); }
 			catch ( ... ) {
 				MXS_CLEARERRORS();
-				PyErr_SetString( PyExc_RuntimeError, MCharToPyString(vl.log->to_string()).data() );
+				MCharToPyString pylog(vl.log->to_string());
+				PyErr_SetString( PyExc_RuntimeError, pylog.data() );
 				vl.result = NULL;
 			}
 		}
@@ -348,7 +370,8 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 
 	// return the default maxscript value
 	one_value_local(result);
-	try { vl.result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(PyStringToMCHAR(PyString_FromString(key)).mchar()) ); }
+	PyStringToMCHAR mkey(PyString_FromString(key));
+	try { vl.result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(mkey.mchar()) ); }
 	catch ( ... ) {
 		PyObject * self_str = ValueWrapper_str(self);
 		PyErr_Format( PyExc_AttributeError, "%s is not a property of %s", key, PyString_AsString(self_str) );
@@ -366,7 +389,8 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 static int
 ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
 	bool success = true;
-	try { self->mValue->eval()->_set_property( Name::intern(PyStringToMCHAR(PyString_FromString(key)).mchar()), ObjectWrapper::intern(value) ); }
+	PyStringToMCHAR mkey(PyString_FromString(key));
+	try { self->mValue->eval()->_set_property( Name::intern(mkey.mchar()), ObjectWrapper::intern(value) ); }
 	catch ( ... ) { success = false; }
 	
 	if ( success ) {
@@ -788,7 +812,8 @@ ValueWrapper_property( PyObject* self, PyObject* args ) {
 		return NULL;
 
 	one_value_local(result);
-	try { vl.result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(PyStringToMCHAR(PyString_FromString(propName)).mchar()) ); }
+	PyStringToMCHAR mpropName(PyString_FromString(propName));
+	try { vl.result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(mpropName.mchar()) ); }
 	catch ( ... ) {
 		PyObject * self_str = ValueWrapper_str((ValueWrapper*)self);
 		PyErr_Format( PyExc_AttributeError, "%s is not a property of %s", propName, PyString_AsString(self_str) );
@@ -812,7 +837,8 @@ ValueWrapper_setProperty( PyObject* self, PyObject* args ) {
 		return NULL;
 
 	bool success = true;
-	try { ((ValueWrapper*) self)->mValue->eval()->_set_property( Name::intern(PyStringToMCHAR(PyString_FromString(propName)).mchar()), ObjectWrapper::intern(propValue) ); }
+	PyStringToMCHAR mpropName(PyString_FromString(propName));
+	try { ((ValueWrapper*) self)->mValue->eval()->_set_property( Name::intern(mpropName.mchar()), ObjectWrapper::intern(propValue) ); }
 	catch ( ... ) { success = false; }
 
 	if ( success ) {
@@ -995,8 +1021,10 @@ ObjectWrapper::apply( Value** arg_list, int count, CallContext* cc ) {
 		// Step 6: generate the function keywords
 		if ( py_count != count ) {
 			kwds = PyDict_New();
-			for ( int i = py_count + 1; i < count; i += 2 )
-				PyDict_SetItem( kwds, MCharToPyString( arg_list[i]->eval()->to_string() ).pyString(), ObjectWrapper::py_intern( arg_list[i+1]->eval() ) );
+			for ( int i = py_count + 1; i < count; i += 2 ) {
+				MCharToPyString pystring( arg_list[i]->eval()->to_string() );
+				PyDict_SetItem( kwds, pystring.pyString(), ObjectWrapper::py_intern( arg_list[i+1]->eval() ) );
+			}
 		}
 
 		// Step 7: execture the python call
@@ -1253,7 +1281,8 @@ ObjectWrapper::intern( PyObject* obj ) {
 	// Step 3: convert strings/unicodes
 	else if ( obj->ob_type == &PyString_Type || obj->ob_type == &PyUnicode_Type ) {
 		one_value_local(output);
-		vl.output = new String(PyStringToMCHAR(obj).mchar());
+		PyStringToMCHAR mobj(obj);
+		vl.output = new String(mobj.mchar());
 		return_value(vl.output);
 	}
 
@@ -1313,7 +1342,8 @@ ObjectWrapper::init() {
 void
 ObjectWrapper::log( PyObject* obj ) {
 	PyObject * self_str = ValueWrapper_str((ValueWrapper*)obj);
-	mprintf( _T("%s\n"), PyStringToMCHAR(self_str).mchar() );
+	PyStringToMCHAR mself(self_str);
+	mprintf( _T("%s\n"), mself.mchar() );
 	Py_DECREF(self_str);
 }
 
@@ -1331,7 +1361,8 @@ ObjectWrapper::handleMaxscriptError() {
 		one_typed_value_local( StringStream* buffer );
 		vl.buffer = new StringStream( _T("MAXScript Error has occurred: \n") );
 		e->sprin1(vl.buffer);
-		PyErr_SetString( PyExc_RuntimeError, MCharToPyString(vl.buffer->to_string()).data() );
+		MCharToPyString pybuf(vl.buffer->to_string());
+		PyErr_SetString( PyExc_RuntimeError, pybuf.data() );
 		pop_value_locals();
 	}
 	// set the exception to unknown

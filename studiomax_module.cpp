@@ -39,11 +39,14 @@ mxs_dealloc( PyObject* self ) {
 static PyObject*
 mxs_getattro( PyObject* self, PyObject* key ) {
 	// Step 1: convert the key to a name
+	//mprintf( _T("mxs_getattro entered\n") );
 	MXS_PROTECT(one_value_local(name));
-	vl.name = Name::intern( PyStringToMCHAR(key).mchar() );
+	PyStringToMCHAR mkey(key);
+	vl.name = Name::intern( mkey.mchar() );
 	// Step 2: collect the PyObject* instance
 	PyObject * output = ObjectWrapper::py_intern( globals->get( vl.name ) );
 	MXS_CLEANUP();
+	//mprintf( _T("mxs_getattro leaving\n") );
 
 	return output;
 }
@@ -52,8 +55,10 @@ mxs_getattro( PyObject* self, PyObject* key ) {
 static int
 mxs_setattro( PyObject* self, PyObject* key, PyObject* value ) {
 	
+	//mprintf( _T("mxs_setattro entered\n") );
 	MXS_PROTECT( two_value_locals( name, result ) );
-	vl.name		= Name::intern( PyStringToMCHAR(key).mchar() );
+	PyStringToMCHAR mkey(key);
+	vl.name		= Name::intern( mkey.mchar() );
 
 	// Step 3: get a preexisting global value
 	vl.result	= globals->get( vl.name );
@@ -70,6 +75,7 @@ mxs_setattro( PyObject* self, PyObject* key, PyObject* value ) {
 
 	// Step 5: cleanup the maxscript memory
 	MXS_CLEANUP();
+	//mprintf( _T("mxs_setattro leaving\n") );
 	
 	return 0;
 }
@@ -350,6 +356,8 @@ studiomax_redo( PyObject* self ) {
 static PyObject*
 studiomax_runScript( PyObject* self, PyObject* args ) {
 	char* filename = NULL;
+	
+	mprintf( _T("mxs_runScript entered") );
 
 	// Step 1: convert the input parameters
 	if ( !PyArg_ParseTuple( args, "s", &filename ) ) { 

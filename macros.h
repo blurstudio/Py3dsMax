@@ -17,6 +17,7 @@
 
 #include "Python.h"
 #include "imports.h"
+#include "wrapper.h"
 
 // Returns pointer to new data owned by caller
 MCHAR * pythonExceptionTraceback( bool clearException = true );
@@ -29,10 +30,6 @@ public:
 private:
 	MCHAR * error;
 };
-
-#define		DEBUG_MODE						true
-
-#define		DEBUG_MSG( MSG )				if ( DEBUG_MODE ) { PyRun_SimpleString( "print %%MSG%%" ); }
 
 // Call this function to define and protect a series of values
 #define		MXS_PROTECT( VALUE_LOCALS )		init_thread_locals(); \
@@ -59,11 +56,9 @@ private:
 #define		MXS_CLEANUP()					pop_value_locals(); \
 											pop_alloc_frame();
 
-
 // Call this macro to cleanup MAXScript memory before exiting a function
 #define		MXS_RETURN(VAL)					pop_alloc_frame(); \
 											return_value( VAL );
-
 
 // Call this macro to clean up any python errors that may have occurred
 // TODO: Test for quiet mode
@@ -88,17 +83,6 @@ private:
 											MEXC.sprin1(buffer); \
 											PyErr_SetString( PYEXC, buffer->to_string() ); \
 											delete buffer; \
-
-#define		PY_CATCHMXSERROR()			catch ( MAXScriptException& e ) { \
-											error_message_box( e, "Error" ); \
-											ObjectWrapper::setPyErrorString( e ); \
-											PyErr_SetString( PyExc_RuntimeError, "MAXScript Error Occurred - see listener for details." ); \
-										} \
-										catch ( ... ) { \
-											MXS_CLEARERRORS(); \
-											PyErr_SetString( PyExc_RuntimeError, "Unknown MAXScript Error Occurred" ); \
-										}
-
 
 
 #endif		__MACROS_H__
