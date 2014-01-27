@@ -38,10 +38,10 @@
 #include "wrapper.h"
 
 // Define the python struct in 3dsMax
-def_struct_primitive( import,			python,			"import" );
-def_struct_primitive( reload,			python,			"reload" );
-def_struct_primitive( run,				python,			"run" );
-def_struct_primitive( exec,				python,			"exec" );
+def_struct_primitive( import, pymax, "import" );
+def_struct_primitive( reload, pymax, "reload" );
+def_struct_primitive( run,    pymax, "run" );
+def_struct_primitive( exec,   pymax, "exec" );
 
 // python.import function: import a python module to maxscript
 Value*
