@@ -60,6 +60,9 @@ private:
 #define		MXS_RETURN(VAL)					pop_alloc_frame(); \
 											return_value( VAL );
 
+#define PY_ERROR_PRINT_CLEAR \
+	mprintf( pythonExceptionTraceback(true) );
+	
 // Call this macro to clean up any python errors that may have occurred
 // TODO: Test for quiet mode
 #define PY_ERROR_PRINT_THROW() \

@@ -52,7 +52,7 @@ Value* Protector::get_property( Value** arg_list, int count ) {
 		return Integer::intern( mCount );
 	}
 	// dump the contents of the memory list
-	else if ( arg_list[0] == Name::intern( L"dump" ) ) {
+	else if ( arg_list[0] == Name::intern( _T("dump") ) ) {
 		ValueWrapper * cur = mFirst;
 		while( cur ) {
 			ObjectWrapper::log((PyObject*)cur);

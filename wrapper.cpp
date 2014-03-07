@@ -29,15 +29,66 @@ typedef	intargfunc		ssizeargfunc;
 
 #endif
 
+#ifndef UNICODE
+// For some reason python doesn't actually use the active code page 
+// that it gets from windows for [En|De]codeMBC functionality.
+// So we have to get it from python and use it for the encoding/decoding
+// of data coming from max.  This 
+static const char * getEncoding()
+{
+	static char codePage[50] = {0};
+	if( codePage[0] == 0 ) {
+		PyObject * locale_mod = PyImport_ImportModule("locale");
+		PyObject * enc_func = locale_mod ? PyObject_GetAttrString(locale_mod,"getpreferredencoding") : 0;
+		PyObject * enc = PyObject_CallFunction(enc_func,NULL);
+		if( enc && PyString_Check(enc) )
+			strncpy(codePage,PyString_AsString(enc),49);
+		Py_XDECREF(enc);
+		Py_XDECREF(enc_func);
+		Py_XDECREF(locale_mod);
+	}
+	return codePage;
+}
+#endif
 
-PyStringToMCHAR::PyStringToMCHAR( PyObject * pyString )
+PyStringToMCHAR::PyStringToMCHAR( PyObject * pyString, bool stealRef )
 : mObject( 0 )
+#ifndef UNICODE
+, mData( 0 )
+#endif
 {
 #ifdef UNICODE
-	mObject = PyUnicode_Decode( PyString_AsString(pyString), PyString_Size(pyString), "ascii", NULL );
+	mObject = PyUnicode_DecodeUTF8( PyString_AsString(pyString), PyString_Size(pyString), NULL );
+	if( stealRef )
+		Py_DECREF(pyString);
 #else
-	mObject = pyString;
-	Py_XINCREF(mObject);
+	if( pyString ) {
+		if( PyString_Check(pyString) ) {
+			mObject = pyString;
+			if( !stealRef )
+				Py_XINCREF(mObject);
+			mData = PyString_AsString(mObject);
+		} else if( PyUnicode_Check(pyString) ) {
+			mObject = PyUnicode_AsEncodedString(pyString,getEncoding(),NULL);
+			if( stealRef )
+				Py_DECREF(pyString);
+			mData = PyString_AsString(mObject);
+		}
+	}
+#endif
+}
+
+PyStringToMCHAR::PyStringToMCHAR( const char * data )
+: mObject( 0 )
+#ifndef UNICODE
+, mData( data )
+#endif
+{
+#ifdef UNICODE
+	mObject = PyUnicode_DecodeUTF8( pyString, strlen(data), NULL );
+	if( !mObject ) {
+		PY_ERROR_PRINT_CLEAR
+	}
 #endif
 }
 
@@ -46,25 +97,19 @@ PyStringToMCHAR::~PyStringToMCHAR()
 	Py_XDECREF(mObject);
 }
 
-MCHAR * PyStringToMCHAR::mchar()
+const MCHAR * PyStringToMCHAR::mchar()
 {
 #ifdef UNICODE
 	return mObject ? PyUnicode_AsUnicode(mObject) : 0;
 #else
-	return mObject ? PyString_AsString(mObject) : 0;
+	return mData;
 #endif
 }
 
-
 MCharToPyString::MCharToPyString( const MCHAR * mchar, const char * enc )
-#ifndef UNICODE
-, mMChars( mchar )
-#endif
 : mObject( 0 )
+, mMChars( mchar )
 {
-#ifdef UNICODE
-	mObject = PyUnicode_Encode(mchar,_tcslen(mchar),enc,NULL);
-#endif
 }
 
 MCharToPyString::~MCharToPyString()
@@ -74,21 +119,43 @@ MCharToPyString::~MCharToPyString()
 
 PyObject * MCharToPyString::pyString()
 {
-#ifndef UNICODE
-	if( !mObject )
-		mObject = PyString_FromString(mMChars);
+	if( !mObject ) {
+#ifdef UNICODE
+		mObject = PyUnicode_Encode(mMChars,_tcslen(mMChars),enc,NULL);
+#else
+		unsigned char * c = (unsigned char*)mMChars;
+		bool isAscii = true;
+		for( ; *c; ++c ) {
+			//mprintf( "0x%X ", (int)*c );
+			if( *c > 128 )
+				isAscii = false;
+		}
+		//mprintf( "\n" );
+		if( isAscii ) {
+			mObject = PyString_FromString(mMChars);
+		} else {
+			int len = _tcslen(mMChars);
+// 			mprintf( "Length of string: %i\n", len );
+			mObject = PyUnicode_Decode(mMChars,len,getEncoding(),NULL);
+			if( !mObject ) {
+				PY_ERROR_PRINT_CLEAR
+				mObject = PyUnicode_DecodeUTF8(mMChars,len,NULL);
+				if( !mObject ) {
+				PY_ERROR_PRINT_CLEAR
+					mObject = PyUnicode_DecodeASCII(mMChars,len,"replace");
+				}
+			}
+		}
 #endif
+	}
 	return mObject;
 }
 
 PyObject * MCharToPyString::pyStringRef()
 {
-#ifndef UNICODE
-	if( !mObject )
-		mObject = PyString_FromString(mMChars);
-#endif
-	Py_XINCREF(mObject);
-	return mObject;
+	PyObject * ret = pyString();
+	Py_XINCREF(ret);
+	return ret;
 }
 
 const char * MCharToPyString::data()
@@ -101,33 +168,6 @@ const char * MCharToPyString::data()
 	return mMChars;
 #endif
 }
-
-MCharToPyUni::MCharToPyUni( const MCHAR * mchar )
-: mObject( 0 )
-{
-#ifdef UNICODE
-	mObject = PyUnicode_FromUnicode(mchar,_tcslen(mchar));
-#else
-	mObject = PyUnicode_Decode(mchar,strlen(mchar),"utf8",NULL);
-#endif
-}
-
-MCharToPyUni::~MCharToPyUni()
-{
-	Py_XDECREF(mObject);
-}
-
-PyObject * MCharToPyUni::pyUni()
-{
-	return mObject;
-}
-
-PyObject * MCharToPyUni::pyUniRef()
-{
-	Py_XINCREF(mObject);
-	return mObject;
-}
-
 
 //---------------------------------------------------------------
 // ValueWrapper Implementation
@@ -370,7 +410,7 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 
 	// return the default maxscript value
 	one_value_local(result);
-	PyStringToMCHAR mkey(PyString_FromString(key));
+	PyStringToMCHAR mkey(PyString_FromString(key),true);
 	try { vl.result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(mkey.mchar()) ); }
 	catch ( ... ) {
 		PyObject * self_str = ValueWrapper_str(self);
@@ -389,7 +429,7 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 static int
 ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
 	bool success = true;
-	PyStringToMCHAR mkey(PyString_FromString(key));
+	PyStringToMCHAR mkey(PyString_FromString(key),true);
 	try { self->mValue->eval()->_set_property( Name::intern(mkey.mchar()), ObjectWrapper::intern(value) ); }
 	catch ( ... ) { success = false; }
 	
@@ -812,7 +852,7 @@ ValueWrapper_property( PyObject* self, PyObject* args ) {
 		return NULL;
 
 	one_value_local(result);
-	PyStringToMCHAR mpropName(PyString_FromString(propName));
+	PyStringToMCHAR mpropName(PyString_FromString(propName),true);
 	try { vl.result = ((ValueWrapper*) self)->mValue->eval()->_get_property( Name::intern(mpropName.mchar()) ); }
 	catch ( ... ) {
 		PyObject * self_str = ValueWrapper_str((ValueWrapper*)self);
@@ -837,7 +877,7 @@ ValueWrapper_setProperty( PyObject* self, PyObject* args ) {
 		return NULL;
 
 	bool success = true;
-	PyStringToMCHAR mpropName(PyString_FromString(propName));
+	PyStringToMCHAR mpropName(PyString_FromString(propName),true);
 	try { ((ValueWrapper*) self)->mValue->eval()->_set_property( Name::intern(mpropName.mchar()), ObjectWrapper::intern(propValue) ); }
 	catch ( ... ) { success = false; }
 
@@ -1167,7 +1207,7 @@ ObjectWrapper::set_property( Value** arg_list, int count ) {
 	// Step 1: lookup by keyword
 	const MCHAR* kstring = arg_list[1]->eval()->to_string();
 	MCharToPyString pykstring(kstring);
-	if ( PyObject_HasAttr( mObject, pykstring.pyString() ) )
+	//if ( PyObject_HasAttr( mObject, pykstring.pyString() ) )
 		PyObject_SetAttr( mObject, pykstring.pyString(), ObjectWrapper::py_intern( arg_list[0]->eval() ) );
 
 	return &ok;
@@ -1228,7 +1268,7 @@ ObjectWrapper::sprin1( CharStream* s ) {
 }
 
 // __str__ function: converts this item to a string
-const MCHAR*
+MCHAR*
 ObjectWrapper::to_string() {
 	if ( mObject ) {
 #ifdef UNICODE
@@ -1362,7 +1402,7 @@ ObjectWrapper::handleMaxscriptError() {
 		vl.buffer = new StringStream( _T("MAXScript Error has occurred: \n") );
 		e->sprin1(vl.buffer);
 		MCharToPyString pybuf(vl.buffer->to_string());
-		PyErr_SetString( PyExc_RuntimeError, pybuf.data() );
+		PyErr_SetObject( PyExc_RuntimeError, pybuf.pyString() );
 		pop_value_locals();
 	}
 	// set the exception to unknown
@@ -1393,9 +1433,7 @@ ObjectWrapper::py_intern( Value* val ) {
 
 	// Step 4: check for strings
 	else if ( is_string( mxs_check ) ) {
-		MCharToPyString pyString(mxs_check->to_string());
-		Py_XINCREF(pyString.pyString());
-		return pyString.pyString();
+		return MCharToPyString(mxs_check->to_string()).pyStringRef();
 	}
 	
 	// Step 5: check for integers

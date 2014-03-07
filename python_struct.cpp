@@ -62,17 +62,16 @@ import_cf( Value** arg_list, int count ) {
 
 	// Step 5: import the module
 	if ( module_name ) {
-		PyObject* utf8 = PyUnicode_EncodeUTF8(module_name,_tcslen(module_name),NULL);
-		if( utf8 ) {
-			PyObject* module = PyImport_Import( utf8 );
+		MCharToPyString pys(module_name);
+		if( pys.pyString() ) {
+			PyObject* module = PyImport_Import( pys.pyString() );
 			vl.mxs_return = ( module ) ? ObjectWrapper::intern( module ) : &undefined;
-			Py_DECREF(utf8);
 		}
 
 		PY_ERROR_PROPAGATE_MXS_CLEANUP();
 	}
 	else {
-		mprintf( L"python.import() error: importing modules must be done with a string value\n" );
+		mprintf( _T("python.import() error: importing modules must be done with a string value\n") );
 		vl.mxs_return = &undefined;
 	}
 	MXS_RETURN( vl.mxs_return );
@@ -93,7 +92,7 @@ reload_cf( Value** arg_list, int count ) {
 		PyImport_ReloadModule( ((ObjectWrapper*) vl.mxs_check)->object() );
 		PY_ERROR_PROPAGATE_MXS_CLEANUP();
 	}
-	else { mprintf( L"python.reload() error: you need to supply a valid python module to reload\n" ); }
+	else { mprintf( _T("python.reload() error: you need to supply a valid python module to reload\n") ); }
 
 	MXS_CLEANUP();
 	return &ok;	
@@ -113,10 +112,9 @@ run_cf( Value** arg_list, int count ) {
 	const MCHAR * filename	= vl.mxs_filename->to_string();
 	//mprintf( _T("Got Filename to run: %s\n"), filename );
 	
-	PyObject* py_name = PyUnicode_FromUnicode(filename,_tcslen(filename));
-	Py_INCREF(py_name);
+	MCharToPyString pys(filename);
 	PyObject* args = PyTuple_New(2);
-	PyTuple_SET_ITEM(args,0,py_name);
+	PyTuple_SET_ITEM(args,0,pys.pyStringRef());
 	PyTuple_SET_ITEM(args,1,PyString_FromString("r"));
 	//mprintf( _T("Arg tuple created, creating python file object\n") );
 	
@@ -127,17 +125,13 @@ run_cf( Value** arg_list, int count ) {
 		PY_ERROR_PROPAGATE_MXS_CLEANUP();
 	}
 	
-	PyObject * filename_utf8 = PyUnicode_AsEncodedString(py_name,"utf8",NULL);
-	Py_DECREF(py_name);
-	
 	//mprintf( _T("File opened, calling PyRun_SimpleFile\n") );
 	// Step 4: run the file
-	PyRun_SimpleFile( PyFile_AsFile(py_file), PyString_AsString(filename_utf8) );
+	PyRun_SimpleFile( PyFile_AsFile(py_file), pys.data() );
 
 	//mprintf( _T("File ran, cleaning up\n") );
 	// Step 5: cleanup the memory
 	Py_DECREF( py_file );
-	Py_DECREF( filename_utf8 );
 	PY_ERROR_PROPAGATE_MXS_CLEANUP();
 	
 	return &true_value;
@@ -226,33 +220,33 @@ MCHAR * pythonExceptionTraceback( bool clearException )
 								ret = strdup( tmp );//, len );
 								success = true;
 							} else {
-								ret = strdup( "Uhoh, failed to get pointer to ascii representation of the exception" );
+								ret = _tcsdup( _T("Uhoh, failed to get pointer to ascii representation of the exception") );
 								success = false;
 							}
 							Py_DECREF( retAscii );
 						} else {
-							ret = strdup( "Uhoh, encoding exception to ascii failed" );
+							ret = _tcsdup( _T("Uhoh, encoding exception to ascii failed") );
 							success = false;
 						}
 #endif
 						Py_DECREF(retUni);
 
 					} else
-						ret = _tcsdup(L"PyUnicode_Join failed");
+						ret = _tcsdup(_T("PyUnicode_Join failed"));
 
 					Py_DECREF(separator);
 				} else
-					ret = _tcsdup(L"PyUnicode_FromString failed");
+					ret = _tcsdup(_T("PyUnicode_FromString failed"));
 
 				Py_DECREF(traceback_list);
 			} else
-				ret = _tcsdup(L"Failure calling traceback.format_exception");
+				ret = _tcsdup(_T("Failure calling traceback.format_exception"));
 
 			Py_DECREF(traceback_module);
 		} else
-			ret = _tcsdup(L"Unable to load the traceback module, can't get exception text");
+			ret = _tcsdup(_T("Unable to load the traceback module, can't get exception text"));
 	} else
-		ret = _tcsdup(L"pythonExceptionTraceback called, but no exception set");
+		ret = _tcsdup(_T("pythonExceptionTraceback called, but no exception set"));
 
 	if( clearException ) {
 		Py_DECREF(type);

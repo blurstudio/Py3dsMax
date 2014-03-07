@@ -43,7 +43,7 @@ public:
 	Value*			set_property( Value** arg_list, int count );
 	PyObject*		object();
 	void			sprin1( CharStream* s );
-	const MCHAR*			to_string();
+	MCHAR*			to_string();
 
 	BOOL			_is_collection()	{ return 1; }
 	BOOL			_is_function()		{ return 1; }
@@ -73,11 +73,15 @@ struct ValueWrapper {
 // Converts a python string object to MCHAR *
 class PyStringToMCHAR {
 public:
-	PyStringToMCHAR( PyObject * );
+	PyStringToMCHAR( PyObject *, bool stealRef=false );
+	PyStringToMCHAR( const char * );
 	~PyStringToMCHAR();
-	MCHAR * mchar();
+	const MCHAR * mchar();
 protected:
 	PyObject * mObject;
+#ifndef UNICODE
+	const char * mData;
+#endif
 };
 
 // Converts am MCHAR * to a python string
@@ -92,22 +96,7 @@ public:
 	// Returns the internal data of the python string, same as PyString_AsString(pyString());
 	const char * data();
 protected:
-#ifndef UNICODE
 	const MCHAR * mMChars;
-#endif
-	PyObject * mObject;
-};
-
-// Converts and MCHAR * to a python unicode object
-class MCharToPyUni {
-public:
-	MCharToPyUni( const MCHAR * );
-	~MCharToPyUni();
-	// Returns a borrowed ref
-	PyObject * pyUni();
-	// Returns a new ref
-	PyObject * pyUniRef();
-protected:
 	PyObject * mObject;
 };
 

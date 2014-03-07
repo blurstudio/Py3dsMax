@@ -346,7 +346,7 @@ studiomax_dispatchmessage( PyObject* self, PyObject* args ) {
 // Py3dsMax.redo() - redoes the last action
 static PyObject*
 studiomax_redo( PyObject* self ) {
-	ExecuteMAXScriptScript( L"max redo" );
+	ExecuteMAXScriptScript( _T("max redo") );
 
 	Py_INCREF( Py_True );
 	return Py_True;
@@ -389,7 +389,7 @@ studiomax_runScript( PyObject* self, PyObject* args ) {
 // Py3dsMax.undo() - undoes the last action
 static PyObject*
 studiomax_undo( PyObject* self ) {
-	ExecuteMAXScriptScript( L"max undo" );
+	ExecuteMAXScriptScript( _T("max undo") );
 
 	Py_INCREF( Py_True );
 	return Py_True;
@@ -658,5 +658,5 @@ init_module(void) {
 	Py_INCREF(&AtTimeType);
 	PyModule_AddObject( module, "AtTime", (PyObject*)&AtTimeType );
 	
-	mprintf( L"[blurPython] DLL has been successfully loaded.\n" );
+	mprintf( _T("[blurPython] DLL has been successfully loaded.\n") );
 }
