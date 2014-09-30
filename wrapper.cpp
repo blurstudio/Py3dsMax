@@ -33,7 +33,7 @@ typedef	intargfunc		ssizeargfunc;
 // For some reason python doesn't actually use the active code page 
 // that it gets from windows for [En|De]codeMBC functionality.
 // So we have to get it from python and use it for the encoding/decoding
-// of data coming from max.  This 
+// of data coming from max. 
 static const char * getEncoding()
 {
 	static char codePage[50] = {0};
@@ -58,9 +58,15 @@ PyStringToMCHAR::PyStringToMCHAR( PyObject * pyString, bool stealRef )
 #endif
 {
 #ifdef UNICODE
-	mObject = PyUnicode_DecodeUTF8( PyString_AsString(pyString), PyString_Size(pyString), NULL );
-	if( stealRef )
-		Py_DECREF(pyString);
+	if( PyString_Check(pyString) ) {
+		mObject = PyUnicode_DecodeUTF8( PyString_AsString(pyString), PyString_Size(pyString), NULL );
+		if( stealRef )
+			Py_DECREF(pyString);
+	} else if( PyUnicode_Check(pyString) ) {
+		mObject = pyString;
+		if( !stealRef )
+			Py_INCREF(mObject);
+	}
 #else
 	if( pyString ) {
 		if( PyString_Check(pyString) ) {
@@ -85,7 +91,7 @@ PyStringToMCHAR::PyStringToMCHAR( const char * data )
 #endif
 {
 #ifdef UNICODE
-	mObject = PyUnicode_DecodeUTF8( pyString, strlen(data), NULL );
+	mObject = PyUnicode_DecodeUTF8( data, strlen(data), NULL );
 	if( !mObject ) {
 		PY_ERROR_PRINT_CLEAR
 	}
@@ -106,8 +112,9 @@ const MCHAR * PyStringToMCHAR::mchar()
 #endif
 }
 
-MCharToPyString::MCharToPyString( const MCHAR * mchar, const char * enc )
+MCharToPyString::MCharToPyString( const MCHAR * mchar )
 : mObject( 0 )
+, mUtf8Object( 0 )
 , mMChars( mchar )
 {
 }
@@ -115,21 +122,22 @@ MCharToPyString::MCharToPyString( const MCHAR * mchar, const char * enc )
 MCharToPyString::~MCharToPyString()
 {
 	Py_XDECREF(mObject);
+	Py_XDECREF(mUtf8Object);
 }
 
 PyObject * MCharToPyString::pyString()
 {
 	if( !mObject ) {
 #ifdef UNICODE
-		mObject = PyUnicode_Encode(mMChars,_tcslen(mMChars),enc,NULL);
+		mObject = PyUnicode_FromUnicode(mMChars,wcslen(mMChars));
 #else
 		unsigned char * c = (unsigned char*)mMChars;
-		bool isAscii = true;
-		for( ; *c; ++c ) {
+		bool isAscii = false;
+/*		for( ; *c; ++c ) {
 			//mprintf( "0x%X ", (int)*c );
-			if( *c > 128 )
+			if( *c > 127 )
 				isAscii = false;
-		}
+		} */
 		//mprintf( "\n" );
 		if( isAscii ) {
 			mObject = PyString_FromString(mMChars);
@@ -141,12 +149,17 @@ PyObject * MCharToPyString::pyString()
 				PY_ERROR_PRINT_CLEAR
 				mObject = PyUnicode_DecodeUTF8(mMChars,len,NULL);
 				if( !mObject ) {
-				PY_ERROR_PRINT_CLEAR
+					PY_ERROR_PRINT_CLEAR
 					mObject = PyUnicode_DecodeASCII(mMChars,len,"replace");
 				}
 			}
 		}
 #endif
+	}
+	if( !mObject ) {
+		PY_ERROR_PRINT_CLEAR
+		mprintf( _T("%s\n"), _T("<critical error converting maxscript string to python, please contact IT>") );
+		mObject = PyString_FromString("<critical error converting maxscript string to python, please contact IT>");
 	}
 	return mObject;
 }
@@ -160,10 +173,19 @@ PyObject * MCharToPyString::pyStringRef()
 
 const char * MCharToPyString::data()
 {
-	if( mObject )
-		return PyString_AsString(mObject);
+	if( mObject ) {
+		if( PyString_Check(mObject) )
+			return PyString_AsString(mObject);
+		
+		
+	}
 #ifdef UNICODE
-	return 0;
+	if( !mUtf8Object && mObject ) {
+		mUtf8Object = PyUnicode_AsUTF8String(mObject);
+		if( !mUtf8Object )
+			PyErr_Print();
+	}
+	return PyString_Check(mUtf8Object) ? PyString_AsString(mUtf8Object) : 0;
 #else
 	return mMChars;
 #endif
@@ -263,7 +285,7 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 				buffer->printf(_T("-- %s %i %i\n"), filename ? filename : _T("unknown file"), thread_local(source_pos), thread_local(source_line) );
 				e.sprin1(buffer);
 				MCharToPyString pybuf(buffer->to_string());
-				PyErr_SetString( PyExc_RuntimeError, pybuf.data() );
+				PyErr_SetObject( PyExc_RuntimeError, pybuf.pyString() );
 				restore_current_frames();
 				clear_error_source_data();
 				MAXScript_signals = 0;
@@ -289,7 +311,7 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 			catch ( ... ) {
 				MXS_CLEARERRORS();
 				MCharToPyString pylog(vl.log->to_string());
-				PyErr_SetString( PyExc_RuntimeError, pylog.data() );
+				PyErr_SetObject( PyExc_RuntimeError, pylog.pyString() );
 				vl.result = NULL;
 			}
 		}
@@ -837,9 +859,9 @@ ValueWrapper_negative( PyObject* self ) {
 }
 
 // __nonzero__ function: return true always
-static bool
+static int
 ValueWrapper_nonzero( PyObject* self ){
-	return true;
+	return 1;
 }
 
 // create custom methods
@@ -1268,7 +1290,7 @@ ObjectWrapper::sprin1( CharStream* s ) {
 }
 
 // __str__ function: converts this item to a string
-MCHAR*
+const MCHAR*
 ObjectWrapper::to_string() {
 	if ( mObject ) {
 #ifdef UNICODE
@@ -1494,6 +1516,9 @@ ObjectWrapper::py_intern( Value* val ) {
 		
 		return (PyObject*) output;
 	}
+	mprintf( _T("Unknown maxscript type passed to py_intern\n") );
+	Py_INCREF(Py_None);
+	return Py_None;
 }
 
 Value*

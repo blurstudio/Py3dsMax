@@ -123,6 +123,7 @@ run_cf( Value** arg_list, int count ) {
 	if( !py_file ) {
 		mprintf( _T("Call to python file object creation failed\n") );
 		PY_ERROR_PROPAGATE_MXS_CLEANUP();
+		return &false_value;
 	}
 	
 	//mprintf( _T("File opened, calling PyRun_SimpleFile\n") );

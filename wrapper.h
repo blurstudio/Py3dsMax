@@ -43,7 +43,7 @@ public:
 	Value*			set_property( Value** arg_list, int count );
 	PyObject*		object();
 	void			sprin1( CharStream* s );
-	MCHAR*			to_string();
+	const MCHAR*			to_string();
 
 	BOOL			_is_collection()	{ return 1; }
 	BOOL			_is_function()		{ return 1; }
@@ -87,7 +87,7 @@ protected:
 // Converts am MCHAR * to a python string
 class MCharToPyString {
 public:
-	MCharToPyString( const MCHAR *, const char * enc = "ascii" );
+	MCharToPyString( const MCHAR * );
 	~MCharToPyString();
 	// Returns borrowed ref
 	PyObject * pyString();
@@ -98,6 +98,9 @@ public:
 protected:
 	const MCHAR * mMChars;
 	PyObject * mObject;
+#ifdef UNICODE
+	PyObject * mUtf8Object;
+#endif
 };
 
 #endif		__WRAPPER_H__

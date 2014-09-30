@@ -75,8 +75,8 @@ private:
 											}
 
 #define PY_ERROR_PROPAGATE_MXS_CLEANUP() \
+	MXS_CLEANUP(); \
 	if ( PyErr_Occurred() ) { \
-		MXS_CLEANUP(); \
 		PY_ERROR_PRINT_THROW(); \
 	}
 

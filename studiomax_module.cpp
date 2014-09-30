@@ -386,6 +386,15 @@ studiomax_runScript( PyObject* self, PyObject* args ) {
 	return Py_True;
 }
 
+static PyObject *
+studiomax_mprint( PyObject * self, PyObject * arg )
+{
+	PyStringToMCHAR mchar(arg);
+	mprintf(mchar.mchar());
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+
 // Py3dsMax.undo() - undoes the last action
 static PyObject*
 studiomax_undo( PyObject* self ) {
@@ -617,7 +626,8 @@ static PyMethodDef module_methods[] = {
 	// python methods
 //	{ "runMaxscript",		(PyCFunction)studiomax_runMaxscript,		METH_VARARGS,	"Runs a maxscript file for proper error checking" },
 	{ "runScript",			(PyCFunction)studiomax_runScript,           METH_VARARGS,   "Runs a python file in our global scope." },
-
+	{ "mprint",				(PyCFunction)studiomax_mprint,				METH_O,			"Prints a string to 3dsMax's listener." },
+	
 	// Version Functions
 	{ "getVersion",			(PyCFunction)studiomax_getVersion,			METH_NOARGS,	"Get the Py3dsMax version" },
 
