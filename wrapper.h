@@ -67,8 +67,12 @@ struct ValueWrapper {
 	// O(n) iteration by the Protector class, and O(1) insertion
 	// and deletion.  The Protector stores the head of the list.
 	ValueWrapper * mPrev, * mNext;
+	PyObject* dict;
 };
 
+// Define the type object struct for use externally when building the
+// Py3dsMax module, so that we have access to the type from the module.
+extern PyTypeObject ValueWrapperType;
 
 // Converts a python string object to MCHAR *
 class PyStringToMCHAR {

@@ -645,6 +645,10 @@ init_module(void) {
 		return;
 	}
 
+	if ( PyType_Ready(&ValueWrapperType) < 0 ) {
+		return;
+	}
+
 	if ( PyType_Ready(&AtTimeType) < 0 ) {
 		return;
 	}
@@ -664,6 +668,9 @@ init_module(void) {
 	// Step 4: create the mxs class in the Py3dsMax module
 	PyObject* instance = mxs_new( &MxsType, NULL, NULL );
 	PyModule_AddObject( module, "mxs", instance );
+
+	Py_INCREF(&ValueWrapperType);
+	PyModule_AddObject( module, "ValueWrapper", (PyObject*)&ValueWrapperType );
 
 	Py_INCREF(&AtTimeType);
 	PyModule_AddObject( module, "AtTime", (PyObject*)&AtTimeType );

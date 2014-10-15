@@ -12,6 +12,7 @@
 #include "imports.h"
 
 #include <string>
+#include <sstream> // for std::stringstream 
 
 #include "macros.h"
 #include "wrapper.h"
@@ -133,17 +134,11 @@ PyObject * MCharToPyString::pyString()
 #else
 		unsigned char * c = (unsigned char*)mMChars;
 		bool isAscii = false;
-/*		for( ; *c; ++c ) {
-			//mprintf( "0x%X ", (int)*c );
-			if( *c > 127 )
-				isAscii = false;
-		} */
-		//mprintf( "\n" );
+
 		if( isAscii ) {
 			mObject = PyString_FromString(mMChars);
 		} else {
 			int len = _tcslen(mMChars);
-// 			mprintf( "Length of string: %i\n", len );
 			mObject = PyUnicode_Decode(mMChars,len,getEncoding(),NULL);
 			if( !mObject ) {
 				PY_ERROR_PRINT_CLEAR
@@ -196,18 +191,55 @@ const char * MCharToPyString::data()
 //---------------------------------------------------------------
 
 // ctor
-static PyObject*
+PyObject*
 ValueWrapper_new( PyTypeObject* type, PyObject* args, PyObject* kwds ) {
 	ValueWrapper* self;
 	self = (ValueWrapper*)type->tp_alloc(type, 0);
-
-	self->mValue		= NULL;
+	self->mValue = NULL;
 	self->mNext = self->mPrev = 0;
 	return (PyObject*) self;
 }
 
+static int
+ValueWrapper_init( PyObject *self, PyObject *args, PyObject *kwds ) {
+	// Since the ValueWrapper Python class is exposed via the Py3dsMax
+	// module, we need to make sure it is not directly instantiated.  The
+	// reason for exposing it is to allow for isinstance checks and in
+	// general make it behave like a normal Python type/class.
+	PyErr_SetString(PyExc_NotImplementedError, "Py3dsMax.ValueWrapper may not be directly instantiated.");
+	return -1;
+}
+
+#ifndef PyMODINIT_FUNC
+#define PyMODINIT_FUNC void
+#endif
+PyMODINIT_FUNC
+ValueWrapper_init(void) {
+	ValueWrapperType.ob_type = &PyType_Type;
+	PyType_Ready( &ValueWrapperType );
+}
+
+static long
+ValueWrapper_hash( ValueWrapper* self ) {
+	const void * address = static_cast<const void*>(self);
+	std::stringstream ss;
+	ss << address;
+	std::string name = ss.str();
+
+	long a = 63689;
+	long b = 378551;
+	long hash = 0;
+
+	for ( std::size_t i = 0; i < name.length(); i++ ) {
+		hash = hash * a + name[i];
+		a = a * b;
+	}
+
+	return hash;
+}
+
 // dtor
-static void
+void
 ValueWrapper_dealloc( ValueWrapper* self ) {
 
 	Protector::unprotect( self );
@@ -216,12 +248,12 @@ ValueWrapper_dealloc( ValueWrapper* self ) {
 }
 
 // __call__ function: called when calling a function on a ValueWrapper instance
-static PyObject*
+PyObject*
 ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 	// Step 1: calculate how many Value**'s we are going to need to pass the Value* method
-	Py_ssize_t arg_count		= (args) ? PyTuple_Size( args ) : 0;
-	Py_ssize_t key_count		= (kwds) ? PyDict_Size( kwds )	: -1;
-	Py_ssize_t mxs_count		= (key_count == -1) ? arg_count : arg_count + 1 + (key_count*2);
+	Py_ssize_t arg_count = (args) ? PyTuple_Size( args ) : 0;
+	Py_ssize_t key_count = (kwds) ? PyDict_Size( kwds )	: -1;
+	Py_ssize_t mxs_count = (key_count == -1) ? arg_count : arg_count + 1 + (key_count*2);
 
 	// Step 2: protect the maxcript memory we are going to use
 	MXS_PROTECT( three_typed_value_locals( Value* method, Value* result, StringStream* log ) );
@@ -250,7 +282,7 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 			}
 
 			// Step 8: add converted keywords
-			if ( key_count != -1 ) {
+			if ( key_count > 0 ) {
 				PyObject *pkey, *pvalue;
 				Py_ssize_t pos	= 0;
 				int key_pos		= 0;
@@ -336,7 +368,7 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 }
 
 // __cmp__ function: called when comparing 2 ValueWrapper instances (a == b, a < b, a <= b, etc.)
-static int
+int
 ValueWrapper_compare( PyObject* self, PyObject* other ) {
 	int result = -1;
 
@@ -372,7 +404,7 @@ ValueWrapper_compare( PyObject* self, PyObject* other ) {
 }
 
 // __str__ function: convert a Value* wrapper to a string
-static PyObject*
+PyObject*
 ValueWrapper_str( ValueWrapper* self ) {
 	// Step 1: protect values
 	MXS_PROTECT( two_typed_value_locals( Value* mxs_check, StringStream* mxs_stream ) );
@@ -411,7 +443,7 @@ ValueWrapper_str( ValueWrapper* self ) {
 }
 
 // __getattr__ function: get a property by name from a Value* instance
-static PyObject*
+PyObject*
 ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 	// check for pre-defined python properties
 	PyObject* tmp;
@@ -448,7 +480,7 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 }
 
 // __setattr__ function: sets a property by name for a Value*
-static int
+int
 ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
 	bool success = true;
 	PyStringToMCHAR mkey(PyString_FromString(key),true);
@@ -459,17 +491,26 @@ ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
 		return 0;
 	}
 	else {
-		PyObject * self_str = ValueWrapper_str(self);
-		PyErr_Format( PyExc_AttributeError, "%s is not a member of %s", key, PyString_AsString(self_str) );
-		Py_DECREF(self_str);
-		return 1;
+		PyObject* pkey = PyString_FromString(key);
+		int ret = PyObject_GenericSetAttr( (PyObject*) self, pkey, value);
+		if ( ret == -1 ) {
+			PyObject * self_str = ValueWrapper_str(self);
+			PyErr_Format( PyExc_AttributeError, "Unable to set attribute %s on %s", key, PyString_AsString(self_str) );
+			Py_DECREF(self_str);
+			Py_DECREF(pkey);
+			return 1;
+		}
+		else {
+			Py_DECREF(pkey);
+			return 0;
+		}
 	}
 }
 
 //------- Sequence Methods
 
 // __len__ function: calculate the length of a maxscript value
-static int
+int
 ValueWrapper_length( PyObject* self ) {
 	// Step 1: protect the maxscript memory
 	MXS_PROTECT( one_value_local( mxs_check ) );
@@ -490,7 +531,7 @@ ValueWrapper_length( PyObject* self ) {
 }
 
 // __getitem__ function: get an item from an index in a maxscript value
-static PyObject*
+PyObject*
 ValueWrapper_item( PyObject* self, int index ) {
 	MXS_PROTECT( three_value_locals( mxs_check, mindex, result ) );
 	MXS_EVAL( ((ValueWrapper*) self)->mValue, vl.mxs_check );
@@ -534,7 +575,7 @@ ValueWrapper_item( PyObject* self, int index ) {
 }
 
 // __getitem__ function: get an item based on an abstract python object
-static PyObject*
+PyObject*
 ValueWrapper_objitem( PyObject* self, PyObject* key ) {
 	// Step 1: check to see if the key is a number, then use the above method
 	if ( key->ob_type == &PyInt_Type ) {
@@ -566,7 +607,7 @@ ValueWrapper_objitem( PyObject* self, PyObject* key ) {
 }
 
 // __setitem__ function: set a maxscript value by an index
-static int
+int
 ValueWrapper_setitem( PyObject* self, int index, PyObject* value ) {
 	// Step 1: protect maxscript memory
 	MXS_PROTECT( two_value_locals( mxs_check, mxs_result ) );
@@ -611,7 +652,7 @@ ValueWrapper_setitem( PyObject* self, int index, PyObject* value ) {
 }
 
 // __setitem__ function: set a maxscript value by python object
-static int
+int
 ValueWrapper_setobjitem( PyObject* self, PyObject* key, PyObject* value ) {
 	// Step 1: check to see if the python object is a number type, if so, use the above method
 	if ( key->ob_type == &PyInt_Type ) {
@@ -651,7 +692,7 @@ ValueWrapper_setobjitem( PyObject* self, PyObject* key, PyObject* value ) {
 // Number Methods
 
 // __add__ function: called when trying to add two wrapper values together
-static PyObject*
+PyObject*
 ValueWrapper_add( PyObject* self, PyObject* other ) {
 	// Step 1: protect maxscript memory
 	MXS_PROTECT( three_value_locals( mxs_self, mxs_other, mxs_value ) );
@@ -676,7 +717,7 @@ ValueWrapper_add( PyObject* self, PyObject* other ) {
 }
 
 // __sub__ function: called when trying to subtract two wrapper values together
-static PyObject*
+PyObject*
 ValueWrapper_subtract( PyObject* self, PyObject* other ) {
 	// Step 1: protect maxscript memory
 	MXS_PROTECT( three_value_locals( mxs_self, mxs_other, mxs_value ) );
@@ -701,7 +742,7 @@ ValueWrapper_subtract( PyObject* self, PyObject* other ) {
 }
 
 // __div__ function: called when trying to divide two wrapper values together
-static PyObject*
+PyObject*
 ValueWrapper_divide( PyObject* self, PyObject* other ) {
 	// Step 1: protect maxscript memory
 	MXS_PROTECT( three_value_locals( mxs_self, mxs_other, mxs_value ) );
@@ -726,7 +767,7 @@ ValueWrapper_divide( PyObject* self, PyObject* other ) {
 }
 
 // __mul__ function: called when trying to multiply two wrapper values together
-static PyObject*
+PyObject*
 ValueWrapper_multiply( PyObject* self, PyObject* other ) {
 	// Step 1: protect maxscript memory
 	MXS_PROTECT( three_value_locals( mxs_self, mxs_other, mxs_value ) );
@@ -751,7 +792,7 @@ ValueWrapper_multiply( PyObject* self, PyObject* other ) {
 }
 
 // __pow__ function: called when trying to raise one number by the other
-static PyObject*
+PyObject*
 ValueWrapper_power( PyObject* self, PyObject* other, PyObject *args ) {
 	// Step 1: protect maxscript memory
 	MXS_PROTECT( three_value_locals( mxs_self, mxs_other, mxs_value ) );
@@ -776,7 +817,7 @@ ValueWrapper_power( PyObject* self, PyObject* other, PyObject *args ) {
 }
 
 // __abs__ function: called when trying to divide two wrapper values together
-static PyObject*
+PyObject*
 ValueWrapper_absolute( PyObject* self ) {
 	// Step 1: protect maxscript memory
 	MXS_PROTECT( two_value_locals( mxs_self, mxs_value ) );
@@ -800,7 +841,7 @@ ValueWrapper_absolute( PyObject* self ) {
 }
 
 // __int__ function: convert an object to an integer
-static PyObject*
+PyObject*
 ValueWrapper_int( PyObject* self ) {
 	// Step 1: protect maxscript memory
 	MXS_PROTECT( one_value_local( mxs_self ) );
@@ -823,7 +864,7 @@ ValueWrapper_int( PyObject* self ) {
 }
 
 // __float__ function: convert an object to an integer
-static PyObject*
+PyObject*
 ValueWrapper_float( PyObject* self ) {
 	// Step 1: protect maxscript memory
 	MXS_PROTECT( one_value_local( mxs_self ) );
@@ -846,7 +887,7 @@ ValueWrapper_float( PyObject* self ) {
 }
 
 // __neg__ function: return the negative of a wrapper object
-static PyObject*
+PyObject*
 ValueWrapper_negative( PyObject* self ) {
 	// Step 1: create the multiplier
 	PyObject* mult		= PyInt_FromLong(-1);
@@ -859,8 +900,8 @@ ValueWrapper_negative( PyObject* self ) {
 }
 
 // __nonzero__ function: return true always
-static int
-ValueWrapper_nonzero( PyObject* self ){
+int
+ValueWrapper_nonzero( PyObject* self ) {
 	return 1;
 }
 
@@ -917,13 +958,12 @@ ValueWrapper_setProperty( PyObject* self, PyObject* args ) {
 // create the python mappings
 
 // define the custom methods for a wrapper
-static PyMethodDef ValueWrapper_methods[] = {
+PyMethodDef ValueWrapper_methods[] = {
 	// windows methods
 	{ "property",			(PyCFunction)ValueWrapper_property,			METH_VARARGS,	"Get a property from a MXS wrapper" },
 	{ "setProperty",		(PyCFunction)ValueWrapper_setProperty,		METH_VARARGS,	"Set a property from a MXS wrapper" },
 	{ NULL, NULL, 0, NULL }
 };
-
 
 // sequence methods
 static PySequenceMethods proxy_as_sequence = {
@@ -985,10 +1025,10 @@ static PyNumberMethods proxy_as_number = {
 };
 
 // python type methods
-static PyTypeObject ValueWrapperType = {
+PyTypeObject ValueWrapperType = {
     PyObject_HEAD_INIT(NULL)
     0,																	// ob_size
-    "value_wrapper",													// tp_name
+    "Py3dsMax.ValueWrapper",											// tp_name
     sizeof(ValueWrapper),												// tp_basicsize
     0,																	// tp_itemsize
     (destructor)ValueWrapper_dealloc,									// tp_dealloc
@@ -1000,13 +1040,13 @@ static PyTypeObject ValueWrapperType = {
     &proxy_as_number,													// tp_as_number
     &proxy_as_sequence,													// tp_as_sequence
     &proxy_as_mapping,													// tp_as_mapping
-    0,																	// tp_hash 
+    (hashfunc)ValueWrapper_hash,													// tp_hash 
     (ternaryfunc)ValueWrapper_call,										// tp_call
     (reprfunc)ValueWrapper_str,											// tp_str
     0,																	// tp_getattro
     0,																	// tp_setattro
     0,																	// tp_as_buffer
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES | Py_TPFLAGS_HAVE_CLASS,	// tp_flags
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES,	// tp_flags
     "Maxscript Value Wrapper",											// tp_doc 
     0,																	// tp_traverse 
     0,																	// tp_clear 
@@ -1021,8 +1061,8 @@ static PyTypeObject ValueWrapperType = {
     0,																	// tp_dict 
     0,																	// tp_descr_get 
     0,																	// tp_descr_set 
-    0,																	// tp_dictoffset 
-    0,																	// tp_init 
+    offsetof(ValueWrapper, dict),										// tp_dictoffset 
+    ValueWrapper_init,													// tp_init 
     0,																	// tp_alloc 
     ValueWrapper_new,													// tp_new 
 };
@@ -1398,6 +1438,7 @@ ObjectWrapper::intern( PyObject* obj ) {
 // initialize function: Initializes the PyObject* class
 bool
 ObjectWrapper::init() {
+	ValueWrapperType.ob_type = &PyType_Type;
 	return ( PyType_Ready( &ValueWrapperType ) < 0 ) ? false : true;
 }
 
