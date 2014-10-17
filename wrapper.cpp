@@ -221,20 +221,9 @@ ValueWrapper_init(void) {
 
 static long
 ValueWrapper_hash( ValueWrapper* self ) {
-	const void * address = static_cast<const void*>(self);
-	std::stringstream ss;
-	ss << address;
-	std::string name = ss.str();
-
-	long a = 63689;
-	long b = 378551;
-	long hash = 0;
-
-	for ( std::size_t i = 0; i < name.length(); i++ ) {
-		hash = hash * a + name[i];
-		a = a * b;
-	}
-
+	PyObject * pyAddress = PyLong_FromUnsignedLongLong( (unsigned PY_LONG_LONG)self );
+	long hash = PyObject_Hash(pyAddress);
+	Py_DECREF(pyAddress);
 	return hash;
 }
 
@@ -492,18 +481,9 @@ ValueWrapper_setattr( ValueWrapper* self, char* key, PyObject* value ) {
 	}
 	else {
 		PyObject* pkey = PyString_FromString(key);
-		int ret = PyObject_GenericSetAttr( (PyObject*) self, pkey, value);
-		if ( ret == -1 ) {
-			PyObject * self_str = ValueWrapper_str(self);
-			PyErr_Format( PyExc_AttributeError, "Unable to set attribute %s on %s", key, PyString_AsString(self_str) );
-			Py_DECREF(self_str);
-			Py_DECREF(pkey);
-			return 1;
-		}
-		else {
-			Py_DECREF(pkey);
-			return 0;
-		}
+		int ret = PyObject_GenericSetAttr( (PyObject*) self, pkey, value );
+		Py_DECREF(pkey);
+		return ret;
 	}
 }
 
