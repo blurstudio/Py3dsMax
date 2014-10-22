@@ -1416,20 +1416,16 @@ ObjectWrapper::intern( PyObject* obj ) {
 		// wrapping ValueWrapperType objects in pure Python, but have them
 		// directly usable via Py3dsMax.
 		if ( PyObject_HasAttrString(obj, "_nativePointer") ) {
-			PyObject *nObj = PyObject_GetAttrString(obj, "_nativePointer");
-			if ( nObj->ob_type == &ValueWrapperType ) {
+			PyObject* nObj = PyObject_GetAttrString(obj, "_nativePointer");
+			if ( nObj != NULL && nObj->ob_type == &ValueWrapperType ) {
 				one_value_local( output );
 				vl.output = ((ValueWrapper*) nObj)->mValue->eval();
+				Py_DECREF(nObj);
 				return_value( vl.output );
 			}
-			else {
-				return new ObjectWrapper(obj);
-			}
 		}
-		else {
-			// Step 13: create an ObjectWrapper instance
-			return new ObjectWrapper(obj);
-		}
+		// Step 13: create an ObjectWrapper instance
+		return new ObjectWrapper(obj);
 	}
 }
 
