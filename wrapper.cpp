@@ -1177,7 +1177,7 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 		MCharToPyString pystr(m_key);
 		if ( PyObject_HasAttr( mObject, pystr.pyString() ) ) {
 			PyObject * attr = PyObject_GetAttr( mObject, pystr.pyString() );
-			vl.output = ObjectWrapper::intern( attr );
+			vl.output = ObjectWrapper::intern( attr, false );
 			Py_XDECREF( attr );
 			break;
 		}
@@ -1192,7 +1192,7 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 				tmpKey[keyLen-1] = 0;
 				if ( PyObject_HasAttrString( mObject, tmpKey ) ) {
 					PyObject * attr = PyObject_GetAttrString( mObject, tmpKey );
-					vl.output = ObjectWrapper::intern( attr );
+					vl.output = ObjectWrapper::intern( attr, false );
 					delete [] tmpKey;
 					Py_XDECREF( attr );
 					break;
@@ -1230,7 +1230,7 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 				// return the first instance in the dictionary that has matching lowercase keys
 				if ( pykstring == mxskstring ) {
 					PyObject * attr = PyObject_GetAttr( mObject, key );
-					vl.output = ObjectWrapper::intern( attr );
+					vl.output = ObjectWrapper::intern( attr, false );
 					Py_XDECREF( attr );
 					break;
 				}
@@ -1348,7 +1348,7 @@ ObjectWrapper::to_string() {
 
 // intern method: create a Value* internal from a PyObject* instance
 Value*
-ObjectWrapper::intern( PyObject* obj ) {
+ObjectWrapper::intern( PyObject* obj, bool unwrap ) {
 	// Step 1: convert NULL or Py_None values
 	if ( !obj || obj == Py_None )
 		return &undefined;
@@ -1415,7 +1415,7 @@ ObjectWrapper::intern( PyObject* obj ) {
 		// if it is use it as described in step 2.  This allows for
 		// wrapping ValueWrapperType objects in pure Python, but have them
 		// directly usable via Py3dsMax.
-		if ( PyObject_HasAttrString(obj, "_nativePointer") ) {
+		if ( PyObject_HasAttrString(obj, "_nativePointer") && unwrap == true ) {
 			PyObject* nObj = PyObject_GetAttrString(obj, "_nativePointer");
 			if ( nObj != NULL && nObj->ob_type == &ValueWrapperType ) {
 				one_value_local( output );

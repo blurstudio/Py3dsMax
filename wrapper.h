@@ -49,7 +49,7 @@ public:
 	BOOL			_is_function()		{ return 1; }
 
 	// objectwrapper static methods
-	static Value*		intern( PyObject* obj );
+	static Value*		intern( PyObject* obj, bool unwrap = true );
 	static Value*		collectionMapper( Value** args, int count );
 	static bool			init();
 	static void			handleMaxscriptError();
