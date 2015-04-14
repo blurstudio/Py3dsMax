@@ -43,3 +43,22 @@ FOR MAX2012
 * Max2012x64_Python26		x64
 
 4: Compile, output goes in [project]/bin/[platform]/[configuration]/
+
+-----------------------------------------------------------------------------------
+
+FOR MAX2015
+
+1: Open the blurPython_2012 project with MSVC++ 2012
+
+2: Setup Environment Variables
+
+* MAX2015SDK	- /path/to/maxsdk/
+* PYTHON27_64	- /path/to/python27/
+
+3: Choose configuration
+
+* Configuration				Platform
+--------------------------------------
+* Max2015x64_Python27		x64
+
+4: Compile, output goes in [project]/bin/[platform]/[configuration]/
