@@ -21,8 +21,8 @@ Git tags: Git tags should always follow this format. v[major].[minor].[patch]
 #define BLURPYTHON_VERSION_MAJOR  {major}
 #define BLURPYTHON_VERSION_MINOR  {minor}
 #define BLURPYTHON_VERSION_PATCH  {patch}
-#define BLURPYTHON_VERSION_REV    {rev}
-#define BLURPYTHON_VERSION_STR    "{major},{minor},{patch},{rev}"
+#define BLURPYTHON_VERSION_REV    {revCount}
+#define BLURPYTHON_VERSION_STR    "{major},{minor},{patch},{revCount}-{rev}"
 #define BLURPYTHON_BUILDDATE      "{datetime}"
 
 

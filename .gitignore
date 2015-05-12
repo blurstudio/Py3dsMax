@@ -1,5 +1,7 @@
 # Auto generated files
 version.h
+# Don't commit the generated pluging file.
+*.dlx
 
 #################
 ## Eclipse
