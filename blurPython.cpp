@@ -47,7 +47,7 @@ __declspec( dllexport ) const TCHAR*		LibDescription()	{ return _T( "Py3dsMax Py
 __declspec( dllexport ) ULONG				LibVersion()		{ return VERSION_3DSMAX; }
 
 // Maxscript 2012 requires these additional exports
-#if __MAXSCRIPT_2012__ || __MAXSCRIPT_2013__
+#if __MAXSCRIPT_2012__ || __MAXSCRIPT_2013__ || __MAXSCRIPT_2015__
 
 // we aren't defining any classes in this plugin, so this is pretty easy
 // other plugins should refer to samples/scriptplugin for an example of the new

@@ -21,7 +21,7 @@
 #include <pythonrun.h>
 
 // updated to work with max 2012's new maxscript organization
-#if __MAXSCRIPT_2012__ || __MAXSCRIPT_2013__
+#if __MAXSCRIPT_2012__ || __MAXSCRIPT_2013__ || __MAXSCRIPT_2015__
 
 #include "macros/define_external_functions.h"
 #include "macros/define_instantiation_functions.h"
