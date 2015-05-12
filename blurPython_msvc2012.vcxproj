@@ -746,8 +746,8 @@
       </DataExecutionPrevention>
     </Link>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>IF DEFINED MAX2015OUT (copy $(OutDir)blurPython27.dlx "$(MAX2015OUT)")</Command>
+      <Message>Copy the dlx to the max plugin folder if defined in the environment.</Message>
     </PostBuildEvent>
     <ProjectReference>
       <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
