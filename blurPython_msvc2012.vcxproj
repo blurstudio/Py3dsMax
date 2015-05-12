@@ -1410,7 +1410,7 @@
   <ItemGroup>
     <None Include="blurPython.def" />
     <None Include="license.txt" />
-    <None Include="README.txt" />
+    <None Include="README.md" />
     <None Include="version_h_template.txt" />
   </ItemGroup>
   <ItemGroup>

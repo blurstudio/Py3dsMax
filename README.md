@@ -7,6 +7,7 @@ Some non-pythonic functionality does not translate to python like the by-referen
 There are several environment variables you will need to set to be able to compile. Most of them contain the year of the max version you are trying to comile for. For example to compile for Max 2015 you need to create a environment variable "MAX2015SDK" pointing to the maxsdk folder of the sdk(C:\Program Files\Autodesk\3ds Max 2015 SDK\maxsdk).
 
 Required Environment variables:
+
 1. MAX[year]SDK: The Max SDK's location. should point to the maxsdk folder. year is the year number of the max build you are trying to build.
 2. PYTHON[ver][_64]: The folder containing python.exe. ver is the python version without a decimal. _64 should be specified for 64bit builds, and should be omitted for 32bit builds.
 3. MAX[Year]OUT: If defined as a post-build process the .dlx file will be copied to this folder. This variable is optional, and is only supported in Max 2015 and newer.
