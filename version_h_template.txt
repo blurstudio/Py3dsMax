@@ -6,16 +6,23 @@ version.h: this is an auto-generated file with the build date and svn
 	revision number of the project.It is included throughout the project 
 	to get the version and build info it defines.
 
-version_h_template.txt: this is where version numbers should be
-	incremened by hand.	This file is read by subwcrev.exe which spits
-	out version.h during a pre-build event.
+version_h_template.txt: Template used when building version.h
+
+buildVersion.py: Uses "git describe --long" to generate the major, minor, 
+	patch, and revision values used by version_h_template.txt and generates
+	the version.h file used when compiling. This is called in a pre-build
+	event.
+
+Git tags: Git tags should always follow this format. v[major].[minor].[patch]
+	replacing the contents of each [] with a version number.
+	
 */
 
-#define BLURPYTHON_VERSION_MAJOR  0
-#define BLURPYTHON_VERSION_MINOR  8
-#define BLURPYTHON_VERSION_PATCH  0
-#define BLURPYTHON_VERSION_REV    $WCREV$
-#define BLURPYTHON_VERSION_STR    "0,8,0,$WCREV$"
-#define BLURPYTHON_BUILDDATE      "$WCNOW$"
+#define BLURPYTHON_VERSION_MAJOR  {major}
+#define BLURPYTHON_VERSION_MINOR  {minor}
+#define BLURPYTHON_VERSION_PATCH  {patch}
+#define BLURPYTHON_VERSION_REV    {rev}
+#define BLURPYTHON_VERSION_STR    "{major},{minor},{patch},{rev}"
+#define BLURPYTHON_BUILDDATE      "{datetime}"
 
 

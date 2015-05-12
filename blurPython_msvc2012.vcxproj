@@ -719,7 +719,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Max2015_Python27|x64'">
     <PreBuildEvent>
-      <Command>subwcrev $(SolutionDir) $(SolutionDir)version_h_template.txt $(SolutionDir)version.h</Command>
+      <Command>$(python27_64)\python.exe buildVersion.py</Command>
     </PreBuildEvent>
     <ClCompile>
       <AdditionalIncludeDirectories>$(MAX2015SDK)\include\maxscript;$(MAX2015SDK)\include;C:\Python27_64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
