@@ -638,7 +638,12 @@ static PyMethodDef module_methods[] = {
 PyMODINIT_FUNC
 init_module(void) {
 	// Step 1: initialize python
+#if __MAXSCRIPT_2015__
+	// TODO: Only allow this function to run once
+#else
+	// This should only be run in versions of max that don't have python native integration
 	Py_Initialize();
+#endif
 
 	// Step 2: make sure the mxs type is running
 	if ( PyType_Ready(&MxsType) < 0 ) {

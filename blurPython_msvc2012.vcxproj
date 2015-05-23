@@ -722,7 +722,7 @@
       <Command>$(python27_64)\python.exe buildVersion.py</Command>
     </PreBuildEvent>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(MAX2015SDK)\include\maxscript;$(MAX2015SDK)\include;C:\Python27_64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MAX2015SDK)\include\maxscript;$(MAX2015SDK)\include;$(PYTHON27_64)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_CRD_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;__MAXSCRIPT_2015__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>
@@ -734,7 +734,7 @@
       <AdditionalDependencies>comctl32.lib;odbc32.lib;odbccp32.lib;version.lib;wininet.lib;mnmath.lib;geom.lib;expr.lib;bmm.lib;maxscrpt.lib;core.lib;maxutil.lib;Vfw32.lib;mesh.lib;msxml2.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ShowProgress>LinkVerboseLib</ShowProgress>
       <OutputFile>$(OutDir)blurPython27.dlx</OutputFile>
-      <AdditionalLibraryDirectories>$(MAX2015SDK)\lib\x64\Release;C:\Python27_64\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(MAX2015SDK)\lib\x64\Release;$(PYTHON27_64)\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>python26_d.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ModuleDefinitionFile>blurPython.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
