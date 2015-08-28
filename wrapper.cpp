@@ -1373,9 +1373,14 @@ ObjectWrapper::intern( PyObject* obj, bool unwrap ) {
 		return Integer::intern( PyInt_AsLong( obj ) );
 
 	// Step 5: convert float
-	else if ( obj->ob_type == &PyFloat_Type )
-		return Double::intern( PyFloat_AsDouble( obj ) );
+	else if ( obj->ob_type == &PyFloat_Type ) {
+		double val = PyFloat_AsDouble( obj );
+		if( (double)(float)val == val )
+			return Float::intern( val );
 
+		return Double::intern( val );
+	}
+	
 	// Step 6: convert boolean
 	else if ( obj->ob_type == &PyBool_Type )
 		return ( obj == Py_True ) ? &true_value : &false_value;
@@ -1496,10 +1501,13 @@ ObjectWrapper::py_intern( Value* val ) {
 	// Step 5: check for integers
 	else if ( is_integer( mxs_check ) )
 		return PyInt_FromLong( mxs_check->to_int() );
+	
+	else if ( is_integer64( mxs_check ) )
+		return PyLong_FromLongLong( mxs_check->to_int64() );
 
 	// Step 6: check for all other numbers
 	else if ( is_number( mxs_check ) )
-		return PyFloat_FromDouble( mxs_check->to_float() );
+		return PyFloat_FromDouble( mxs_check->to_double() );
 
 	// Step 7: check for ok/true values
 	else if ( mxs_check == &ok || mxs_check == &true_value ) {
