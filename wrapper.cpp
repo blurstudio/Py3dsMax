@@ -1059,16 +1059,22 @@ ObjectWrapper::ObjectWrapper( PyObject* obj )
 , mObjectDict( 0 )
 , mPyString( 0 )
 {
+	PyGILState_STATE gstate;
+	gstate = PyGILState_Ensure();
 	tag = class_tag(ObjectWrapper);
 	Py_XINCREF(obj);
+	PyGILState_Release(gstate);
 }
 
 // dtor
 ObjectWrapper::~ObjectWrapper()
 {
+	PyGILState_STATE gstate;
+	gstate = PyGILState_Ensure();
 	Py_XDECREF( mObject );
 	Py_XDECREF( mObjectDict );
 	Py_XDECREF( mPyString );
+	PyGILState_Release(gstate);
 }
 
 // __call__ function: call a python object with maxscript values
@@ -1096,6 +1102,8 @@ ObjectWrapper::apply( Value** arg_list, int count, CallContext* cc ) {
 		PyObject* py_result = NULL;
 
 		// Step 5: generate the function arguments (args cannot be NULL)
+		PyGILState_STATE gstate;
+		gstate = PyGILState_Ensure();
 		args = PyTuple_New( py_count );
 		for ( int i = 0; i < py_count; i++ )
 			PyTuple_SetItem( args, i, ObjectWrapper::py_intern( arg_list[i]->eval() ) );
@@ -1129,6 +1137,7 @@ ObjectWrapper::apply( Value** arg_list, int count, CallContext* cc ) {
 		Py_XDECREF( kwds );
 		Py_XDECREF( py_result );
 
+		PyGILState_Release(gstate);
 		// Step 10: return the value, protecting maxscript memory
 		MXS_RETURN( vl.output );
 	}
@@ -1159,6 +1168,8 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 
 	vl.output = &undefined;
 
+	PyGILState_STATE gstate;
+	gstate = PyGILState_Ensure();
 	do {
 		// Step 2: get default properties
 		if ( arg_list[0] == n_count ) {
@@ -1238,6 +1249,7 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 		}
 		
 	} while (false);
+	PyGILState_Release(gstate);
 	
 	// Step 4: return the value, protecting maxscript memory
 	MXS_RETURN( vl.output );
@@ -1246,12 +1258,15 @@ ObjectWrapper::get_property( Value** arg_list, int count ) {
 // __setattr__ function: set a python value from maxscript
 Value*
 ObjectWrapper::set_property( Value** arg_list, int count ) {
+	PyGILState_STATE gstate;
+	gstate = PyGILState_Ensure();
 	// Step 1: lookup by keyword
 	const MCHAR* kstring = arg_list[1]->eval()->to_string();
 	MCharToPyString pykstring(kstring);
 	//if ( PyObject_HasAttr( mObject, pykstring.pyString() ) )
 		PyObject_SetAttr( mObject, pykstring.pyString(), ObjectWrapper::py_intern( arg_list[0]->eval() ) );
 
+	PyGILState_Release(gstate);
 	return &ok;
 }
 
@@ -1266,6 +1281,8 @@ ObjectWrapper::get_vf( Value** arg_list, int count ) {
 	// Step 1: convert the input keys
 	vl.key = arg_list[0]->eval();
 
+	PyGILState_STATE gstate;
+	gstate = PyGILState_Ensure();
 	try {
 		if( is_number(vl.key) )
 			py_key = PyInt_FromLong( vl.key->to_int() );
@@ -1285,6 +1302,8 @@ ObjectWrapper::get_vf( Value** arg_list, int count ) {
 	// Step 5: release the python memory
 	Py_XDECREF( py_key );
 	Py_XDECREF( py_result );
+
+	PyGILState_Release(gstate);
 
 	// Step 6: return the maxscript value, protecting its memory
 	MXS_RETURN( vl.output );
@@ -1313,15 +1332,18 @@ ObjectWrapper::sprin1( CharStream* s ) {
 const MCHAR*
 ObjectWrapper::to_string() {
 	if ( mObject ) {
+		const MCHAR * ret = 0;
+		PyGILState_STATE gstate;
+		gstate = PyGILState_Ensure();
 #ifdef UNICODE
 		if( PyUnicode_Check( mObject ) )
-			return PyUnicode_AsUnicode( mObject );
+			ret = PyUnicode_AsUnicode( mObject );
 #else
 		if( PyString_Check( mObject ) )
-			return PyString_AsString( mObject );
+			ret = PyString_AsString( mObject );
 #endif
 
-		if( !mPyString ) {
+		if( !ret && !mPyString ) {
 			mPyString = PyObject_Str( mObject );
 #ifdef UNICODE
 			if( mPyString ) {
@@ -1334,12 +1356,14 @@ ObjectWrapper::to_string() {
 				PyErr_Clear();
 		}
 
-		if( mPyString )
+		if( !ret && mPyString )
 #ifdef UNICODE
-			return PyUnicode_AsUnicode( mPyString );
+			ret = PyUnicode_AsUnicode( mPyString );
 #else
-			return PyString_AsString( mPyString );
+			ret = PyString_AsString( mPyString );
 #endif
+		PyGILState_Release(gstate);
+		return ret;
 	}
 	return _T("<<python: error accessing wrapper object>>");
 }
@@ -1349,14 +1373,18 @@ ObjectWrapper::to_string() {
 // intern method: create a Value* internal from a PyObject* instance
 Value*
 ObjectWrapper::intern( PyObject* obj, bool unwrap ) {
+	PyGILState_STATE gstate;
+	gstate = PyGILState_Ensure();
+	Value* ret = 0;
 	// Step 1: convert NULL or Py_None values
 	if ( !obj || obj == Py_None )
-		return &undefined;
+		ret = &undefined;
 
 	// Step 2: convert ValueWrapper instances
 	else if ( obj->ob_type == &ValueWrapperType ) {
 		one_value_local( output );
 		vl.output = ((ValueWrapper*) obj)->mValue->eval();
+		PyGILState_Release(gstate);
 		return_value( vl.output );
 	}
 
@@ -1365,25 +1393,26 @@ ObjectWrapper::intern( PyObject* obj, bool unwrap ) {
 		one_value_local(output);
 		PyStringToMCHAR mobj(obj);
 		vl.output = new String(mobj.mchar());
+		PyGILState_Release(gstate);
 		return_value(vl.output);
 	}
 
 	// Step 4: convert integers/longs
 	else if ( obj->ob_type == &PyInt_Type || obj->ob_type == &PyLong_Type )
-		return Integer::intern( PyInt_AsLong( obj ) );
+		ret = Integer::intern( PyInt_AsLong( obj ) );
 
 	// Step 5: convert float
 	else if ( obj->ob_type == &PyFloat_Type ) {
 		double val = PyFloat_AsDouble( obj );
 		if( (double)(float)val == val )
-			return Float::intern( val );
+			ret = Float::intern( val );
 
-		return Double::intern( val );
+		ret = Double::intern( val );
 	}
 
 	// Step 6: convert boolean
 	else if ( obj->ob_type == &PyBool_Type )
-		return ( obj == Py_True ) ? &true_value : &false_value;
+		ret = ( obj == Py_True ) ? &true_value : &false_value;
 
 	// Step 7: convert lists/tuples
 	else if ( obj->ob_type == &PyList_Type || obj->ob_type == &PyTuple_Type ) {
@@ -1411,6 +1440,7 @@ ObjectWrapper::intern( PyObject* obj, bool unwrap ) {
 				// propogate error
 		}
 
+		PyGILState_Release(gstate);
 		return_value(vl.output);
 	}
 
@@ -1430,23 +1460,32 @@ ObjectWrapper::intern( PyObject* obj, bool unwrap ) {
 			}
 		}
 		// Step 13: create an ObjectWrapper instance
-		return new ObjectWrapper(obj);
+		ret = new ObjectWrapper(obj);
 	}
+	PyGILState_Release(gstate);
+	return ret;
 }
 
 // initialize function: Initializes the PyObject* class
 bool
 ObjectWrapper::init() {
+	PyGILState_STATE gstate;
+	gstate = PyGILState_Ensure();
 	ValueWrapperType.ob_type = &PyType_Type;
-	return ( PyType_Ready( &ValueWrapperType ) < 0 ) ? false : true;
+	bool ret = ( PyType_Ready( &ValueWrapperType ) < 0 ) ? false : true;
+	PyGILState_Release(gstate);
+	return ret;
 }
 
 void
 ObjectWrapper::log( PyObject* obj ) {
+	PyGILState_STATE gstate;
+	gstate = PyGILState_Ensure();
 	PyObject * self_str = ValueWrapper_str((ValueWrapper*)obj);
 	PyStringToMCHAR mself(self_str);
 	mprintf( _T("%s\n"), mself.mchar() );
 	Py_DECREF(self_str);
+	PyGILState_Release(gstate);
 }
 
 // is_wrapper function: checks the type of the object to make sure its a ValueWrapper
@@ -1480,54 +1519,57 @@ ObjectWrapper::py_intern( Value* val ) {
 	Value* mxs_check = NULL;
 	MXS_EVAL( val, mxs_check );
 
+	PyObject* ret = 0;
+	PyGILState_STATE gstate;
+	gstate = PyGILState_Ensure();
+
 	// Step 2: check for NULL, &undefined, or &unsupplied values
 	if ( !mxs_check || mxs_check == &undefined || mxs_check == &unsupplied ) {
 		Py_INCREF( Py_None );
+		PyGILState_Release(gstate);
 		return Py_None;
 	}
 
 	// Step 3: check for ObjectWrappers
 	if ( is_objectwrapper(mxs_check) ) {
-		PyObject* output = ((ObjectWrapper*) mxs_check)->mObject;
-		Py_INCREF( output );
-		return output;
+		ret = ((ObjectWrapper*) mxs_check)->mObject;
+		Py_INCREF( ret );
 	}
 
 	// Step 4: check for strings
 	else if ( is_string( mxs_check ) ) {
-		return MCharToPyString(mxs_check->to_string()).pyStringRef();
+		ret = MCharToPyString(mxs_check->to_string()).pyStringRef();
 	}
 	
 	// Step 5: check for integers
 	else if ( is_integer( mxs_check ) )
-		return PyInt_FromLong( mxs_check->to_int() );
+		ret = PyInt_FromLong( mxs_check->to_int() );
 
 	else if ( is_integer64( mxs_check ) )
-		return PyLong_FromLongLong( mxs_check->to_int64() );
+		ret = PyLong_FromLongLong( mxs_check->to_int64() );
 
 	// Step 6: check for all other numbers
 	else if ( is_number( mxs_check ) )
-		return PyFloat_FromDouble( mxs_check->to_double() );
+		ret = PyFloat_FromDouble( mxs_check->to_double() );
 
 	// Step 7: check for ok/true values
 	else if ( mxs_check == &ok || mxs_check == &true_value ) {
 		Py_INCREF( Py_True );
-		return Py_True;
+		ret = Py_True;
 	}
 
 	// Step 8: check for false values
 	else if ( mxs_check == &false_value ) {
 		Py_INCREF( Py_False );
-		return Py_False;
+		ret = Py_False;
 	}
 
 	// map object sets or arrays to a python array using a node_map
 	else if ( is_objectset( mxs_check ) || is_array( mxs_check ) ) {
-		PyObject* output = PyList_New(0);
-		Value* args[2] = { NULL, (Value*)output };
+		ret = PyList_New(0);
+		Value* args[2] = { NULL, (Value*)ret };
 		node_map m = { NULL, ObjectWrapper::collectionMapper, args, 2 };
 		mxs_check->map( m );
-		return output;
 	}
 
 	// Step 9: check for all collections (except bitarrays, modifiers, and objectsets)
@@ -1536,16 +1578,14 @@ ObjectWrapper::py_intern( Value* val ) {
 		int count = mxs_check->_get_property( n_count )->to_int();
 		
 		// Step 11: create output array and maxscript index
-		PyObject* output = PyList_New(count);
+		ret = PyList_New(count);
 		Value* index;
 
 		for ( int i = 0; i < count; i++ ) {
 			// Step 12: set the maxscript index to the count + 1 (maxscript is 1 based)
 			index = Integer::intern(i+1);
-			PyList_SetItem( output, i, ObjectWrapper::py_intern( mxs_check->get_vf( &index, 1 ) ) );
+			PyList_SetItem( ret, i, ObjectWrapper::py_intern( mxs_check->get_vf( &index, 1 ) ) );
 		}
-
-		return output;
 	}
 	else {
 		// Step 13: create a new ValueWrapper instance
@@ -1557,11 +1597,16 @@ ObjectWrapper::py_intern( Value* val ) {
 		Protector::protect( output );
 		pop_value_locals();
 
-		return (PyObject*) output;
+		ret =(PyObject*) output;
 	}
+	if (ret == 0) {
 	mprintf( _T("Unknown maxscript type passed to py_intern\n") );
 	Py_INCREF(Py_None);
-	return Py_None;
+		ret = Py_None;
+	}
+
+	PyGILState_Release(gstate);
+	return ret;
 }
 
 Value*

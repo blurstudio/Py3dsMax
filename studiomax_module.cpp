@@ -637,8 +637,15 @@ static PyMethodDef module_methods[] = {
 // initialize the plugin
 PyMODINIT_FUNC
 init_module(void) {
+
+#ifndef __MAXSCRIPT_2015__
 	// Step 1: initialize python
-	Py_Initialize();
+	if (!Py_IsInitialized())
+		Py_Initialize();
+#endif
+
+	PyGILState_STATE gstate;
+	gstate = PyGILState_Ensure();
 
 	// Step 2: make sure the mxs type is running
 	if ( PyType_Ready(&MxsType) < 0 ) {
@@ -675,5 +682,7 @@ init_module(void) {
 	Py_INCREF(&AtTimeType);
 	PyModule_AddObject( module, "AtTime", (PyObject*)&AtTimeType );
 	
+	PyGILState_Release(gstate);
+
 	mprintf( _T("[blurPython] DLL has been successfully loaded.\n") );
 }
