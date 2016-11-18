@@ -73,6 +73,9 @@ struct ValueWrapper {
 // Define the type object struct for use externally when building the
 // Py3dsMax module, so that we have access to the type from the module.
 extern PyTypeObject ValueWrapperType;
+extern PyTypeObject TypedFloatType;
+void TypedFloatType_init();
+
 
 // Converts a python string object to MCHAR *
 class PyStringToMCHAR {
