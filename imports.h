@@ -16,7 +16,7 @@
 
 
 // As of 2013 max is compiled with UNICODE enabled - MCHAR == TCHAR == wchar == Py_UNICODE, utf16
-#ifdef __MAXSCRIPT_2015__
+#if __MAXSCRIPT_2013__ || __MAXSCRIPT_2015__
 #define _UNICODE
 #define UNICODE
 #endif

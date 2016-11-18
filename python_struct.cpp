@@ -42,10 +42,21 @@ def_struct_primitive( import, pymax, "import" );
 def_struct_primitive( reload, pymax, "reload" );
 def_struct_primitive( run,    pymax, "run" );
 def_struct_primitive( exec,   pymax, "exec" );
+#ifdef __MAXSCRIPT_2015__
+def_struct_primitive( init, pymax, "init");
+
+PyMODINIT_FUNC init_module();
+Value* init_cf(Value** arg_list, int count) {
+	init_module();
+	return &ok;
+}
+#endif
 
 // python.import function: import a python module to maxscript
 Value*
 import_cf( Value** arg_list, int count ) {
+	PyGILState_STATE gstate;
+	gstate = PyGILState_Ensure();
 	// Step 1: make sure the arguments supplied are correct
 	check_arg_count( python.import, 1, count );
 
@@ -74,6 +85,7 @@ import_cf( Value** arg_list, int count ) {
 		mprintf( _T("python.import() error: importing modules must be done with a string value\n") );
 		vl.mxs_return = &undefined;
 	}
+	PyGILState_Release(gstate);
 	MXS_RETURN( vl.mxs_return );
 }
 
@@ -89,8 +101,11 @@ reload_cf( Value** arg_list, int count ) {
 	
 	// Step 3: make sure the item is a proper type
 	if ( is_objectwrapper(vl.mxs_check) ) {
+		PyGILState_STATE gstate;
+		gstate = PyGILState_Ensure();
 		PyImport_ReloadModule( ((ObjectWrapper*) vl.mxs_check)->object() );
 		PY_ERROR_PROPAGATE_MXS_CLEANUP();
+		PyGILState_Release(gstate);
 	}
 	else { mprintf( _T("python.reload() error: you need to supply a valid python module to reload\n") ); }
 
@@ -112,6 +127,8 @@ run_cf( Value** arg_list, int count ) {
 	const MCHAR * filename	= vl.mxs_filename->to_string();
 	//mprintf( _T("Got Filename to run: %s\n"), filename );
 	
+	PyGILState_STATE gstate;
+	gstate = PyGILState_Ensure();
 	MCharToPyString pys(filename);
 	PyObject* args = PyTuple_New(2);
 	PyTuple_SET_ITEM(args,0,pys.pyStringRef());
@@ -134,6 +151,7 @@ run_cf( Value** arg_list, int count ) {
 	// Step 5: cleanup the memory
 	Py_DECREF( py_file );
 	PY_ERROR_PROPAGATE_MXS_CLEANUP();
+	PyGILState_Release(gstate);
 	
 	return &true_value;
 }
@@ -160,11 +178,15 @@ exec_cf( Value** arg_list, int count ) {
 	}
 
 	{
+		PyGILState_STATE gstate;
+		gstate = PyGILState_Ensure();
+
 		MCharToPyString ascii(command);
 		if( ascii.pyString() )
 			PyRun_SimpleString( ascii.data() );
 
 		PY_ERROR_PROPAGATE_MXS_CLEANUP();
+		PyGILState_Release(gstate);
 	}
 
 	// Step 5: cleanup the memory

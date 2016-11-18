@@ -623,7 +623,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Max2014_Python27|x64'">
     <PreBuildEvent>
-      <Command>subwcrev $(SolutionDir) $(SolutionDir)version_h_template.txt $(SolutionDir)version.h</Command>
+      <Command>$(python27_64)\python.exe buildVersion.py</Command>
     </PreBuildEvent>
     <ClCompile>
       <AdditionalIncludeDirectories>c:\program files\autodesk\3ds max 2014 sdk\maxsdk\include\maxscript;c:\program files\autodesk\3ds max 2014 sdk\maxsdk\include;c:\python27_64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>

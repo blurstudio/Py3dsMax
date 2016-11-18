@@ -68,6 +68,7 @@ private:
 #define PY_ERROR_PRINT_THROW() \
 	MCHAR * exc_str = pythonExceptionTraceback( /*clearException=*/ false ); \
 	PyErr_Print(); \
+	PyGILState_Release(gstate);\
 	throw PyExcRuntimeError( exc_str );
 
 #define		PY_ERROR_PROPAGATE()			if ( PyErr_Occurred() ) { \

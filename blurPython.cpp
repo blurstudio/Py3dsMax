@@ -32,17 +32,26 @@ BOOL APIENTRY		DLLMain( HMODULE hModule, DWORD ul_reason, LPVOID lpReserved ) {
 		}
 		case DLL_PROCESS_DETACH: {
 			// Kill the python system
+#ifndef __MAXSCRIPT_2015__
+			// This should only be run in versions of max that don't have python native integration
 			Py_Finalize();
+#endif
 		}
 	}
 
 	return TRUE;
 }
 
-// the init_module function is ofund in the studiomax_module file
+// the init_module function is found in the studiomax_module file
+#ifdef __MAXSCRIPT_2015__
+// calling init_module when LibInit is called will cause max to crash.
+__declspec( dllexport ) void				LibInit()			{}
+#else
 PyMODINIT_FUNC init_module();
 
 __declspec( dllexport ) void				LibInit()			{ init_module(); }
+#endif
+
 __declspec( dllexport ) const TCHAR*		LibDescription()	{ return _T( "Py3dsMax Python Extension" ); }
 __declspec( dllexport ) ULONG				LibVersion()		{ return VERSION_3DSMAX; }
 
