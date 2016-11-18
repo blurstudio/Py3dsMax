@@ -42,6 +42,7 @@ def_struct_primitive( import, pymax, "import" );
 def_struct_primitive( reload, pymax, "reload" );
 def_struct_primitive( run,    pymax, "run" );
 def_struct_primitive( exec,   pymax, "exec" );
+#ifdef __MAXSCRIPT_2015__
 def_struct_primitive( init, pymax, "init");
 
 PyMODINIT_FUNC init_module();
@@ -49,7 +50,7 @@ Value* init_cf(Value** arg_list, int count) {
 	init_module();
 	return &ok;
 }
-
+#endif
 
 // python.import function: import a python module to maxscript
 Value*
