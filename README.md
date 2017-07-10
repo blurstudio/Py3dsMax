@@ -23,3 +23,19 @@ Here is a breakdown of the Visual Studio requirements required to build this pac
 | Configuration/Platform | Max2012_Python24/Win32 Max2012x64_Python26/x64 | Max2013x32_Python27/Win32 Max2013x64_Python27/x64 | Max2014_Python27/x64 | Max2015x64_Python27/x64 | Max2015x64_Python27/x64 |
 
 Compiled output goes in [project]/bin/[platform]/Max[year]_Python[ver]/ or for older versions it may go into [project]/bin/[platform]/[configuration]/
+
+# Install
+
+* Copy the .dlx file into your plugins folder.
+* Create the following startup script in your scripts/startup folder.
+
+```
+-- Check if the Python DLL is installed
+if ( pymax != undefined ) then (
+   -- Starting with Max 2015 we need to initialize Autodesk's python before our python is initialized
+   if (python != undefined) and (finditem (getPropNames python) #exec == 0) do
+       python.init()
+   -- pymax did not have a init method in the past.
+   if (finditem (getPropNames pymax) #init != 0) do
+       pymax.init()
+```
