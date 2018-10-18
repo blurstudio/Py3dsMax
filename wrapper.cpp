@@ -17,7 +17,6 @@
 #include "macros.h"
 #include "wrapper.h"
 #include "protector.h"
-#include "structmember.h"
 
 #include "Parser.h"  // for print functions
 
@@ -1048,94 +1047,6 @@ PyTypeObject ValueWrapperType = {
     ValueWrapper_new,													// tp_new 
 };
 
-struct TypedFloat {
-	PyFloatObject fo;
-	bool isFloat;
-};
-
-void TypedFloatType_init(void)
-{
-	TypedFloatType.tp_new = PyType_GenericNew;
-	TypedFloatType.tp_base = &PyFloat_Type;
-	PyType_Ready(&TypedFloatType);
-	Py_INCREF(&TypedFloatType);
-}
-
-static PyObject * buildTypedFloat(double d, bool isFloat)
-{
-	PyObject * self = TypedFloatType.tp_alloc(&TypedFloatType, 0);
-	PyObject * args = PyTuple_New(2);
-	Py_INCREF(self);
-	PyTuple_SET_ITEM(args,0,(PyObject*)self);
-	PyTuple_SET_ITEM(args,1,PyFloat_FromDouble(d));
-	PyFloat_Type.tp_init(self, args, NULL);
-	Py_DECREF(args);
-	((TypedFloat*)self)->isFloat = isFloat;
-	return (PyObject*)self;
-}
-
-static int
-TypedFloat_init(PyObject * self, PyObject *args, PyObject *kwds)
-{
-	TypedFloat * tf = (TypedFloat*)self;
-	if (PyTuple_Size(args) >= 1) {
-		double d = PyFloat_AsDouble(PyTuple_GET_ITEM(args,0));
-		if (PyErr_Occurred())
-			return -1;
-		tf->fo.ob_fval = d;
-	}
-	tf->isFloat = (PyTuple_Size(args) >= 2) && (PyTuple_GET_ITEM(args,1) == Py_True);
-	return 0;
-}
-
-static PyMemberDef TypedFloat_members[] = {
-	{"isFloat", T_BOOL, offsetof(TypedFloat,isFloat), RO, "True if the TypedFloat is a float, False if it is a double" },
-	{NULL}
-};
-
-// python type methods
-PyTypeObject TypedFloatType = {
-    PyObject_HEAD_INIT(NULL)
-    0,																	// ob_size
-    "Py3dsMax.TypedFloat",												// tp_name
-    sizeof(TypedFloat),													// tp_basicsize
-    0,																	// tp_itemsize
-    0,																	// tp_dealloc
-    0,																	// tp_print
-    0,																	// tp_getattr
-    0,																	// tp_setattr
-    0,																	// tp_compare
-    0,																	// tp_repr
-    0,																	// tp_as_number
-    0,																	// tp_as_sequence
-    0,																	// tp_as_mapping
-    0,																	// tp_hash 
-    0,																	// tp_call
-    0,																	// tp_str
-    0,																	// tp_getattro
-    0,																	// tp_setattro
-    0,																	// tp_as_buffer
-    Py_TPFLAGS_DEFAULT,													// tp_flags
-    "Typed(float vs double) Python Float",								// tp_doc 
-    0,																	// tp_traverse 
-    0,																	// tp_clear 
-    0,																	// tp_richcompare 
-    0,																	// tp_weaklistoffset 
-    0,																	// tp_iter 
-    0,																	// tp_iternext 
-    0,																	// tp_methods 
-    TypedFloat_members,													// tp_members 
-    0,																	// tp_getset 
-    0,																	// tp_base 
-    0,																	// tp_dict 
-    0,																	// tp_descr_get 
-    0,																	// tp_descr_set 
-    0,																	// tp_dictoffset 
-    TypedFloat_init,													// tp_init 
-    0,																	// tp_alloc 
-    0																	// tp_new 
-};
-
 //--------------------------------------------------------------------------------
 // ObjectWrapper implementation
 //--------------------------------------------------------------------------------
@@ -1490,18 +1401,14 @@ ObjectWrapper::intern( PyObject* obj, bool unwrap ) {
 	else if ( obj->ob_type == &PyInt_Type || obj->ob_type == &PyLong_Type )
 		ret = Integer::intern( PyInt_AsLong( obj ) );
 
-	// Step 5.1: convert typed floats^M
-	else if (obj->ob_type == &TypedFloatType) {
+	// Step 5: convert float
+	else if ( obj->ob_type == &PyFloat_Type ) {
 		double val = PyFloat_AsDouble( obj );
-		if (((TypedFloat*)obj)->isFloat)
-			ret = Float::intern(val);
-		else
-			ret = Double::intern(val);
-	}
+		if( (double)(float)val == val )
+			ret = Float::intern( val );
 
-	// Step 5.2: convert normal float^M
-	else if ( obj->ob_type == &PyFloat_Type )
-		ret = Double::intern( PyFloat_AsDouble( obj ) );
+		ret = Double::intern( val );
+	}
 
 	// Step 6: convert boolean
 	else if ( obj->ob_type == &PyBool_Type )
@@ -1549,7 +1456,6 @@ ObjectWrapper::intern( PyObject* obj, bool unwrap ) {
 				one_value_local( output );
 				vl.output = ((ValueWrapper*) nObj)->mValue->eval();
 				Py_DECREF(nObj);
-				PyGILState_Release(gstate);
 				return_value( vl.output );
 			}
 		}
@@ -1644,7 +1550,7 @@ ObjectWrapper::py_intern( Value* val ) {
 
 	// Step 6: check for all other numbers
 	else if ( is_number( mxs_check ) )
-		ret = buildTypedFloat(mxs_check->to_double(), is_float(mxs_check));
+		ret = PyFloat_FromDouble( mxs_check->to_double() );
 
 	// Step 7: check for ok/true values
 	else if ( mxs_check == &ok || mxs_check == &true_value ) {

@@ -15,10 +15,6 @@
 #define __IMPORTS_H__
 
 
-#ifdef __MAXSCRIPT_2016__
-#define __MAXSCRIPT_2015__
-#endif
-
 // As of 2013 max is compiled with UNICODE enabled - MCHAR == TCHAR == wchar == Py_UNICODE, utf16
 #if __MAXSCRIPT_2013__ || __MAXSCRIPT_2015__
 #define _UNICODE

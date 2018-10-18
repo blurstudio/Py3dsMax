@@ -660,8 +660,6 @@ init_module(void) {
 		return;
 	}
 	
-	TypedFloatType_init();
-	
 	// Step 3: make sure the object wrapper is running
 	if ( !ObjectWrapper::init() ) {
 		return;
@@ -686,8 +684,5 @@ init_module(void) {
 	
 	PyGILState_Release(gstate);
 
-	Py_INCREF(&TypedFloatType);
-	PyModule_AddObject( module, "TypedFloat", (PyObject*)&TypedFloatType );
-	
 	mprintf( _T("[blurPython] DLL has been successfully loaded.\n") );
 }
