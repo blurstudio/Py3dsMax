@@ -35,7 +35,7 @@ private:
 #define		MXS_PROTECT( VALUE_LOCALS )		init_thread_locals(); \
 											push_alloc_frame(); \
 											VALUE_LOCALS; \
-											save_current_frames();
+											ScopedSaveCurrentFrames scopedSaveCurrentFrames;
 
 // Split a Value* from its thunk containers
 #define		MXS_EVAL(INPUT,OUTPUT)			OUTPUT = INPUT; \
@@ -44,7 +44,7 @@ private:
 
 // Clear up MAXScript memory properly after an error
 #define		MXS_CLEARERRORS()				clear_error_source_data(); \
-											restore_current_frames(); \
+											scopedSaveCurrentFrames.RestoreCurrentFrames(); \
 											MAXScript_signals = 0;
 
 // Quick macro to catch all errors, clean them, and set a MAXScript error for Python
@@ -53,7 +53,7 @@ private:
 											}
 
 // Call this macro to cleanup MAXScript memory before exiting a function
-#define		MXS_CLEANUP()					pop_value_locals(); \
+#define		MXS_CLEANUP()					mxs_Exit_ValueLocal_Scope.~MXS_Exit_ValueLocal_Scope(); \
 											pop_alloc_frame();
 
 // Call this macro to cleanup MAXScript memory before exiting a function

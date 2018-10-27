@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="blurPython.cpp" />
+    <ClCompile Include="protector.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="studiomax_module.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="python_struct.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="wrapper.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="imports.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="macros.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="protector.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="wrapper.h">
+      <Filter>include</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="blurPython.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="license.txt" />
+    <None Include="version_h_template.txt" />
+    <None Include="README.md" />
+    <None Include="blurPython27.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{c1a7cf2a-f3e9-4773-b94d-30d2372b9a4f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{888938ad-13af-47be-a630-23d6e94005e5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

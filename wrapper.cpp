@@ -307,7 +307,7 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 				e.sprin1(buffer);
 				MCharToPyString pybuf(buffer->to_string());
 				PyErr_SetObject( PyExc_RuntimeError, pybuf.pyString() );
-				restore_current_frames();
+				scopedSaveCurrentFrames.RestoreCurrentFrames();
 				clear_error_source_data();
 				MAXScript_signals = 0;
 				return 0;
@@ -324,7 +324,7 @@ ValueWrapper_call( ValueWrapper* self, PyObject* args, PyObject* kwds ) {
 			} */
 
 			// clear the value local memory
-			pop_value_local_array(mxs_args);
+			mxs_Exit_ValueLocal_Scope_mxs_args.~MXS_Exit_ValueLocal_Scope();
 		}
 		else {
 			// Step 6: if we don't, simply call the method with a NULL array
@@ -459,12 +459,12 @@ ValueWrapper_getattr( ValueWrapper* self, char* key ) {
 		PyObject * self_str = ValueWrapper_str(self);
 		PyErr_Format( PyExc_AttributeError, "%s is not a property of %s", key, PyString_AsString(self_str) );
 		Py_DECREF(self_str);
-		pop_value_locals();
+		mxs_Exit_ValueLocal_Scope.~MXS_Exit_ValueLocal_Scope();
 		return 0;
 	}
 
 	tmp = ObjectWrapper::py_intern( vl.result );
-	pop_value_locals();
+	mxs_Exit_ValueLocal_Scope.~MXS_Exit_ValueLocal_Scope();
 	return tmp;
 }
 
@@ -616,7 +616,7 @@ ValueWrapper_setitem( PyObject* self, int index, PyObject* value ) {
 			MXS_CATCHERRORS();
 
 			// Step 5: pop the local array
-			pop_value_local_array(arg_list);
+			mxs_Exit_ValueLocal_Scope_arg_list.~MXS_Exit_ValueLocal_Scope();
 		}
 	}
 
@@ -663,7 +663,7 @@ ValueWrapper_setobjitem( PyObject* self, PyObject* key, PyObject* value ) {
 	if ( result == -1 ) { PyErr_SetString( PyExc_IndexError, "__setitem__ could not set the maxscript value" ); }
 
 	// Step 7: cleanup maxscript memory
-	pop_value_local_array( arg_list );
+	mxs_Exit_ValueLocal_Scope_arg_list.~MXS_Exit_ValueLocal_Scope();
 	MXS_CLEANUP();
 
 	return result;
@@ -907,7 +907,7 @@ ValueWrapper_property( PyObject* self, PyObject* args ) {
 		ret = ObjectWrapper::py_intern( vl.result );
 	}
 	
-	pop_value_locals();
+	mxs_Exit_ValueLocal_Scope.~MXS_Exit_ValueLocal_Scope();
 	return ret;
 }
 
@@ -1504,7 +1504,7 @@ ObjectWrapper::handleMaxscriptError() {
 		e->sprin1(vl.buffer);
 		MCharToPyString pybuf(vl.buffer->to_string());
 		PyErr_SetObject( PyExc_RuntimeError, pybuf.pyString() );
-		pop_value_locals();
+		mxs_Exit_ValueLocal_Scope.~MXS_Exit_ValueLocal_Scope();
 	}
 	// set the exception to unknown
 	else {
@@ -1595,7 +1595,7 @@ ObjectWrapper::py_intern( Value* val ) {
 		vl.heap_ptr = val->get_heap_ptr();
 		output->mValue = vl.heap_ptr;
 		Protector::protect( output );
-		pop_value_locals();
+		mxs_Exit_ValueLocal_Scope.~MXS_Exit_ValueLocal_Scope();
 
 		ret =(PyObject*) output;
 	}
